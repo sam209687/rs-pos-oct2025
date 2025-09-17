@@ -1,0 +1,147 @@
+// src/lib/schemas.ts
+
+import { z } from "zod";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+];
+
+export const brandSchema = z.object({
+  name: z.string().min(2, {
+    message: "Brand name must be at least 2 characters long.",
+  }),
+  image: z
+    .instanceof(File, { message: "Image is required." })
+    .refine((file) => file.size > 0, "Image is required.")
+    .refine((file) => file.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
+    .refine(
+      (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
+      "Only .jpg, .jpeg, .png and .webp formats are supported."
+    ),
+});
+
+// Category Schema
+export const categorySchema = z.object({
+  name: z.string().min(2, {
+    message: "Category name must be at least 2 characters long.",
+  }),
+  codePrefix: z.string().min(2, {
+    message: "Code prefix must be at least 2 characters long.",
+  }),
+});
+
+// Unit Schema
+export const unitSchema = z.object({
+  name: z.string().min(1, {
+    message: "Unit name cannot be empty.",
+  }),
+});
+
+// Tax Schema
+export const taxSchema = z.object({
+  name: z.string().min(1, {
+    message: "Tax name cannot be empty.",
+  }),
+  hsn: z.string().min(1, {
+    message: "HSN cannot be empty.",
+  }),
+  gst: z.coerce.number().min(0, {
+    message: "GST must be a positive number.",
+  }),
+});
+
+// Store-Settings
+export const StoreSchema = z.object({
+  storeName: z.string().min(1, "Store name is required."),
+  address: z.string().min(1, "Address is required."),
+  city: z.string().min(1, "City is required."),
+  pincode: z.string().regex(/^\d{6}$/, "Pincode must be exactly 6 digits."),
+  state: z.string().min(1, "State is required."),
+  contactNumber: z.string().regex(/^\d{10}$/, "Contact number must be 10 digits."),
+  email: z.string().email("Invalid email address."),
+  fssai: z.string().optional(),
+  pan: z.string().optional(),
+  gst: z.string().optional(),
+  mediaUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
+  logo: z
+    .any()
+    .optional()
+    .refine((file) => !file || file.size <= MAX_FILE_SIZE, `Max image size is 5MB.`)
+    .refine(
+      (file) => !file || ACCEPTED_IMAGE_TYPES.includes(file.type),
+      "Only .jpg, .jpeg, .png and .webp formats are supported."
+    ),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  qrCode: z.string().optional(),
+  mediaQRCode: z.string().optional(),
+});
+
+// currency schema
+export const currencySchema = z.object({
+  sNo: z.string().min(1, "Serial number is required."),
+  currencySymbol: z.string().min(1, "Currency symbol is required."),
+});
+
+// Product Schema
+export const productSchema = z.object({
+  category: z.string().min(1, "Category is required."),
+  brand: z.string().min(1, "Brand is required."),
+  productCode: z.string().optional(),
+  productName: z.string().min(2, "Product name is required."),
+  description: z.string().optional(),
+  unit: z.string().min(1, "Unit is required."),
+  tax: z.string().optional(),
+  purchasePrice: z.coerce.number().min(0, "Purchase price must be a non-negative number."),
+  packingCharges: z.coerce.number().optional(),
+  laborCharges: z.coerce.number().optional(),
+  electricityCharges: z.coerce.number().optional(),
+  others1: z.coerce.number().optional(),
+  others2: z.coerce.number().optional(),
+  totalPrice: z.coerce.number().optional(),
+  stockQuantity: z.coerce.number().optional(),
+  stockAlertQuantity: z.coerce.number().optional(),
+  image: z.string().optional(),
+  qrCode: z.string().optional(),
+});
+
+// NEW: Batch Schema
+export const batchSchema = z.object({
+  product: z.string().min(1, "Product is required."),
+  batchNumber: z.string().min(1, "Batch number is required."),
+});
+
+// ✅ CORRECTED: Variants Schema
+export const variantSchema = z.object({
+  product: z.string().min(1, "Product is required."),
+  variantVolume: z.coerce.number().min(0, "Variant volume must be a non-negative number."),
+  unit: z.string().min(1, "Unit is required."),
+  variantColor: z.string().optional(),
+  price: z.coerce.number().min(0, "Price must be a non-negative number."),
+  mrp: z.coerce.number().min(0, "MRP must be a non-negative number."), // ✅ FIX: Use coerce.number
+  image: z.any().optional(),
+  // The extra fields are now optional in the schema too
+  productTotalPrice: z.coerce.number().optional(),
+  stockQuantity: z.coerce.number().optional(),
+  calculatedPricePerUnit: z.coerce.number().optional(),
+});
+
+// oec.schema.ts
+export const oecSchema = z.object({
+  product: z.string().min(1, { message: "Product is required." }),
+  oilExpellingCharges: z.coerce.number().min(0, { message: "Oil Expelling Charges must be a positive number." }),
+});
+
+// customer details schema
+export const customerSchema = z.object({
+  phone: z.string().regex(/^\d{10}$/, {
+    message: "Phone number must be exactly 10 digits.",
+  }),
+  name: z.string().min(2, {
+    message: "Customer name must be at least 2 characters.",
+  }),
+  address: z.string().optional(),
+});

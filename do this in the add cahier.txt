@@ -1,0 +1,1 @@
+do this in the add-cahier page add the email as personal-Email and username as email change the schema in user.ts

@@ -1,0 +1,74 @@
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/db";
+import Batch from "@/lib/models/batch";
+import { z } from "zod";
+import { batchSchema } from "@/lib/schemas";
+import mongoose from "mongoose";
+
+// Handle GET request to fetch all batches
+export async function GET() {
+  try {
+    await connectToDatabase();
+    const batches = await Batch.find({}).populate({
+      path: 'product',
+      select: 'productName productCode',
+    }).sort({ createdAt: -1 });
+
+    return NextResponse.json({ success: true, data: batches, message: "Batches fetched successfully!" });
+  } catch (error: unknown) {
+    console.error("Failed to fetch batches:", error);
+    // Safely check and use the error message
+    const message = error instanceof Error ? error.message : "An unknown error occurred.";
+    return NextResponse.json({ success: false, message: "Failed to fetch batches: " + message }, { status: 500 });
+  }
+}
+
+// Handle POST request to create a new batch
+export async function POST(request: Request) {
+  try {
+    await connectToDatabase();
+    const body = await request.json();
+    const validatedData = batchSchema.safeParse(body);
+    
+    if (!validatedData.success) {
+      return NextResponse.json({ success: false, message: "Invalid form data.", errors: validatedData.error.flatten().fieldErrors }, { status: 400 });
+    }
+
+    const newBatch = new Batch(validatedData.data);
+    await newBatch.save();
+
+    return NextResponse.json({ success: true, data: newBatch, message: "Batch created successfully!" }, { status: 201 });
+  } catch (error: unknown) {
+    if (error instanceof mongoose.mongo.MongoError && error.code === 11000) {
+      return NextResponse.json({ success: false, message: "Batch with this number already exists." }, { status: 409 });
+    }
+    console.error("Failed to create batch:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred.";
+    return NextResponse.json({ success: false, message: "Failed to create batch: " + message }, { status: 500 });
+  }
+}
+
+// Handle DELETE request to delete a batch
+export async function DELETE(request: Request) {
+  try {
+    await connectToDatabase();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ success: false, message: "Batch ID is required." }, { status: 400 });
+    }
+
+    const deletedBatch = await Batch.findByIdAndDelete(id);
+
+    if (!deletedBatch) {
+      return NextResponse.json({ success: false, message: "Batch not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: "Batch deleted successfully!" }, { status: 200 });
+  } catch (error: unknown) {
+    console.error("Failed to delete batch:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred.";
+    return NextResponse.json({ success: false, message: "Failed to delete batch: " + message }, { status: 500 });
+  }
+}

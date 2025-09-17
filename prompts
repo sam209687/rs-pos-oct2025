@@ -1,0 +1,262 @@
+write Prompt for under mention instructions which are has to be implement for my NextJs 15 and above framework
+
+
+
+1. Framework NextJS 15 and above
+
+2. Tailwind CSS
+
+3. Shadcn UI
+
+4. Zod Validation for form fields with displaying error message under each field with their respective errors
+
+5. Use Zustland for state management and for data fetching instead of useEffect
+
+6. Make each component or functions reusable in this entire project
+
+7. Every button should be disabled and show spinner after it si clicked and show please wait...
+
+8.Use Debounce for serching data in the fronted.
+
+9. we will use mobgodb GUI for offline purpose we will save the data locally in MongoDB locally 
+
+10. this project considered ad offline project
+
+11. All the  UI should have to meet the modern web development UI with eye catching and  en ganging design
+
+
+
+Now write the prompt considering the above mentioned all the points
+
+create a reusable component for brand this component should have following pages as mention below
+
+
+
+1. brand page it should show a table with following headings S/No, Name, Image , Actions (with Edit and Delete Icons with their White and red Red icon colour) add Add Brand button with state loading enable and disabled in the top of the form give a heading and para related to this form
+
+
+
+2. Add brand page it should use zod validated form with following field
+
+Name and Image field
+
+this image should be saved locally to the public folder and i have already that function as mentioned below create this in src/lib/imageUpload.ts
+
+
+
+// src/lib/imageUpload.ts
+
+import fs from 'fs/promises';
+
+import path from 'path';
+
+
+
+/**
+
+ * Uploads a file to a specified public directory.
+
+ * @param file The file object (from FormData, typically a Next.js File type).
+
+ * @param subfolder The subfolder within public/image/ (e.g., 'brand', 'product').
+
+ * @returns The public URL path of the uploaded image.
+
+ * @throws Error if file operations fail or directory cannot be created.
+
+ */
+
+export async function uploadImage(file: File, subfolder: string): Promise<string> {
+
+  if (!file) {
+
+    throw new Error('No file provided for upload.');
+
+  }
+
+
+
+  const uploadDir = path.join(process.cwd(), 'public', 'image', subfolder);
+
+
+
+  try {
+
+    // Ensure the upload directory exists
+
+    await fs.mkdir(uploadDir, { recursive: true });
+
+  } catch (error) {
+
+    console.error(`Error creating upload directory ${uploadDir}:`, error);
+
+    throw new Error(`Failed to create upload directory.`);
+
+  }
+
+
+
+  // Sanitize filename to prevent path traversal and ensure uniqueness
+
+  const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
+  const uniqueFilename = `${Date.now()}-${sanitizedFilename}`;
+
+  const filePath = path.join(uploadDir, uniqueFilename);
+
+
+
+  try {
+
+    // Convert File to Buffer and write to disk
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    await fs.writeFile(filePath, buffer);
+
+
+
+    // Return the public URL path
+
+    return `/image/${subfolder}/${uniqueFilename}`;
+
+  } catch (error) {
+
+    console.error(`Error writing file ${filePath}:`, error);
+
+    throw new Error(`Failed to upload image.`);
+
+  }
+
+}
+
+
+
+/**
+
+ * Deletes an image from the public directory.
+
+ * @param imageUrl The public URL path of the image (e.g., /image/brand/123-image.png).
+
+ * @returns True if deletion was successful, false if file not found, throws on other errors.
+
+ */
+
+export async function deleteImage(imageUrl: string): Promise<boolean> {
+
+  if (!imageUrl || !imageUrl.startsWith('/image/')) {
+
+    console.warn(`Invalid image URL for deletion: ${imageUrl}`);
+
+    return false; // Not a managed image URL
+
+  }
+
+
+
+  const relativePath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl; // Remove leading slash if present
+
+  const fullPath = path.join(process.cwd(), 'public', relativePath);
+
+
+
+  try {
+
+    await fs.unlink(fullPath);
+
+    console.log(`Successfully deleted image: ${fullPath}`);
+
+    return true;
+
+  } catch (error: any) {
+
+    if (error.code === 'ENOENT') {
+
+      console.warn(`Attempted to delete non-existent file: ${fullPath}`);
+
+      return false; // File not found, consider it deleted
+
+    }
+
+    console.error(`Error deleting image ${fullPath}:`, error);
+
+    throw new Error(`Failed to delete image: ${error.message}`);
+
+  }
+
+}
+
+
+and this is db connection code of this project
+
+// src/lib/db.ts
+import mongoose from "mongoose";
+
+let cachedDb: typeof mongoose | null = null;
+
+export async function connectToDatabase() {
+  if (cachedDb) {
+    return cachedDb;
+  }
+
+  try {
+    const db = await mongoose.connect(process.env.MONGODB_URI as string);
+    cachedDb = db;
+    console.log("Connected to MongoDB.");
+    return db;
+  } catch (error) {
+    console.error("Error connecting to MongoDB: ", error);
+    throw new Error("Failed to connect to database.");
+  }
+}
+
+
+
+
+
+so create this into the src/component/forms folder
+
+
+
+now create the pages to render the same in src/app/(admin)/admin/brand/page.tsx
+
+(this page will render the table Ui from the stc/components/table and fill all the required props to shown the data from DB we have crated the mongo db database connection file
+
+
+
+ create the pages to render the same in src/app/(admin)/admin/brand/add-brand/page.tsx
+
+the will create the form with thoir respective fields as mentioned above in the src/components/forms it will get the ui and fill the required props 
+
+
+
+so we have created the UI for table and forms in src/components/forms and table now we can reuse the both for all of out future components like categories, units, products etc
+
+
+
+
+
+Now write the prompt considering all the mentioned points
+
+
+
+follow the same steps to create the variants components it should have following fields
+
+it should be related with products db collection means relational db
+
+Product Name (fetch the name of product from produvt DB in the dropbox)
+
+Product Code (Auto generate field shows the product code of that product in the text field)
+
+Variant volume (number field without increase and decrease button minimum 0)
+
+variant color (Text box to input the color)
+
+unit (this dropbox will show the units from db)
+
+Price (Show the selling price of that product from product DB)
+
+
+
+
+
