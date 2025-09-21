@@ -29,7 +29,7 @@ const VariantsPage = async () => {
         <DataTable
           columns={columns}
           data={variants as IPopulatedVariant[]}
-          searchKey="productName"
+          searchKey="product.productName" // ✅ FIX: Correct search key for nested property
         />
       </div>
     </div>

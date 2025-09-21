@@ -93,7 +93,7 @@ export const productSchema = z.object({
   productCode: z.string().optional(),
   productName: z.string().min(2, "Product name is required."),
   description: z.string().optional(),
-  unit: z.string().min(1, "Unit is required."),
+  // ✅ REMOVED: unit: z.string().min(1, "Unit is required."),
   tax: z.string().optional(),
   purchasePrice: z.coerce.number().min(0, "Purchase price must be a non-negative number."),
   packingCharges: z.coerce.number().optional(),
@@ -104,8 +104,8 @@ export const productSchema = z.object({
   totalPrice: z.coerce.number().optional(),
   stockQuantity: z.coerce.number().optional(),
   stockAlertQuantity: z.coerce.number().optional(),
-  image: z.string().optional(),
-  qrCode: z.string().optional(),
+  // ✅ REMOVED: image: z.string().optional(),
+  // ✅ REMOVED: qrCode: z.string().optional(),
 });
 
 // NEW: Batch Schema
@@ -121,12 +121,14 @@ export const variantSchema = z.object({
   unit: z.string().min(1, "Unit is required."),
   variantColor: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be a non-negative number."),
-  mrp: z.coerce.number().min(0, "MRP must be a non-negative number."), // ✅ FIX: Use coerce.number
+  mrp: z.coerce.number().min(0, "MRP must be a non-negative number."),
+  discount: z.coerce.number().min(0).max(100).optional(),
   image: z.any().optional(),
-  // The extra fields are now optional in the schema too
-  productTotalPrice: z.coerce.number().optional(),
-  stockQuantity: z.coerce.number().optional(),
-  calculatedPricePerUnit: z.coerce.number().optional(),
+  qrCode: z.any().optional(),
+  // ✅ REMOVED: These are not part of the variant model
+  // productTotalPrice: z.coerce.number().optional(),
+  // stockQuantity: z.coerce.number().optional(),
+  // calculatedPricePerUnit: z.coerce.number().optional(),
 });
 
 // oec.schema.ts
@@ -145,3 +147,7 @@ export const customerSchema = z.object({
   }),
   address: z.string().optional(),
 });
+
+
+// Admin Panel Schema
+

@@ -1,16 +1,43 @@
 // src/actions/product.actions.ts
-
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { generateProductCode } from "@/lib/generate-prod-code";
 import { connectToDatabase } from "@/lib/db";
-import Product from "@/lib/models/product";
+import Product, { IProduct } from "@/lib/models/product";
+import Category, { ICategory } from "@/lib/models/category";
+import Brand, { IBrand } from "@/lib/models/brand";
+import Unit, { IUnit } from "@/lib/models/unit";
+import Tax, { ITax } from "@/lib/models/tax";
 import { getCategoryById } from "./category.actions";
 import { productSchema } from "@/lib/schemas";
 import { z } from "zod";
+import "@/lib/models/brand";
+import "@/lib/models/category";
+import "@/lib/models/unit";
+import "@/lib/models/tax";
 
-// NEW FUNCTION: Generate a product code for the UI
+export interface ProductData {
+  category: string;
+  brand: string;
+  productCode: string;
+  productName: string;
+  description?: string;
+  // ✅ REMOVED: unit: string;
+  tax?: string;
+  purchasePrice: number;
+  packingCharges?: number;
+  laborCharges?: number;
+  electricityCharges?: number;
+  others1?: number;
+  others2?: number;
+  totalPrice?: number;
+  stockQuantity?: number;
+  stockAlertQuantity?: number;
+  // ✅ REMOVED: image?: string;
+  // ✅ REMOVED: qrCode?: string;
+}
+
 export const generateProductCodeForUI = async (categoryId: string) => {
   try {
     const categoryResult = await getCategoryById(categoryId);
@@ -25,7 +52,41 @@ export const generateProductCodeForUI = async (categoryId: string) => {
   }
 };
 
-// Fetch all products
+export const getCategories = async () => {
+  try {
+    await connectToDatabase();
+    const categories = await Category.find({}).lean();
+    return { success: true, data: JSON.parse(JSON.stringify(categories)) as ICategory[] };
+  } catch (error) {
+    console.error("Failed to fetch categories:", error);
+    return { success: false, message: "Failed to fetch categories." };
+  }
+};
+
+export const getBrands = async () => {
+  try {
+    await connectToDatabase();
+    const brands = await Brand.find({}).lean();
+    return { success: true, data: JSON.parse(JSON.stringify(brands)) as IBrand[] };
+  } catch (error) {
+    console.error("Failed to fetch brands:", error);
+    return { success: false, message: "Failed to fetch brands." };
+  }
+};
+
+// ✅ REMOVED: getUnits action is no longer needed
+
+export const getTaxes = async () => {
+  try {
+    await connectToDatabase();
+    const taxes = await Tax.find({}).lean();
+    return { success: true, data: JSON.parse(JSON.stringify(taxes)) as ITax[] };
+  } catch (error) {
+    console.error("Failed to fetch taxes:", error);
+    return { success: false, message: "Failed to fetch taxes." };
+  }
+};
+
 export const getProducts = async () => {
   try {
     await connectToDatabase();
@@ -36,53 +97,28 @@ export const getProducts = async () => {
   }
 };
 
-// Fetch a single product by ID
 export const getProductById = async (id: string) => {
   try {
     await connectToDatabase();
-    const product = await Product.findById(id).populate("category brand unit tax");
+    // ✅ UPDATED: Removed 'unit', 'image', 'qrCode' from populate
+    const product = await Product.findById(id).populate("category brand tax").lean();
     if (!product) {
       return { success: false, message: "Product not found." };
     }
-    return { success: true, data: JSON.parse(JSON.stringify(product)) };
+    return { success: true, data: JSON.parse(JSON.stringify(product)) as IProduct };
   } catch (error) {
+    console.error("Error in getProductById:", error);
     return { success: false, message: "Failed to fetch product." };
   }
 };
 
-// Create a new product
-export const createProduct = async (formData: FormData) => {
+export const createProduct = async (data: ProductData) => {
   try {
-    const data = {
-      category: formData.get("category"),
-      brand: formData.get("brand"),
-      productCode: formData.get("productCode"),
-      productName: formData.get("productName"),
-      description: formData.get("description"),
-      unit: formData.get("unit"),
-      tax: formData.get("tax") === "" ? undefined : formData.get("tax"),
-      purchasePrice: formData.get("purchasePrice"),
-      packingCharges: formData.get("packingCharges"),
-      laborCharges: formData.get("laborCharges"),
-      electricityCharges: formData.get("electricityCharges"),
-      others1: formData.get("others1"),
-      others2: formData.get("others2"),
-      totalPrice: formData.get("totalPrice"),
-      stockQuantity: formData.get("stockQuantity"),
-      stockAlertQuantity: formData.get("stockAlertQuantity"),
-      image: formData.get("image"),
-      qrCode: formData.get("qrCode"),
-    };
-
     const validatedData = productSchema.parse(data);
-    
     await connectToDatabase();
     const newProduct = new Product(validatedData);
-
     await newProduct.save();
-
     revalidatePath("/admin/products");
-
     return { success: true, data: JSON.parse(JSON.stringify(newProduct)), message: "Product created successfully!" };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -93,46 +129,20 @@ export const createProduct = async (formData: FormData) => {
   }
 };
 
-// Update an existing product
-export const updateProduct = async (id: string, formData: FormData) => {
+export const updateProduct = async (id: string, data: ProductData) => {
   try {
-    const data = {
-      category: formData.get("category"),
-      brand: formData.get("brand"),
-      productCode: formData.get("productCode"),
-      productName: formData.get("productName"),
-      description: formData.get("description"),
-      unit: formData.get("unit"),
-      tax: formData.get("tax") === "" ? undefined : formData.get("tax"),
-      purchasePrice: formData.get("purchasePrice"),
-      packingCharges: formData.get("packingCharges"),
-      laborCharges: formData.get("laborCharges"),
-      electricityCharges: formData.get("electricityCharges"),
-      others1: formData.get("others1"),
-      others2: formData.get("others2"),
-      totalPrice: formData.get("totalPrice"),
-      stockQuantity: formData.get("stockQuantity"),
-      stockAlertQuantity: formData.get("stockAlertQuantity"),
-      image: formData.get("image"),
-      qrCode: formData.get("qrCode"),
-    };
-
     const validatedData = productSchema.parse(data);
-
     await connectToDatabase();
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       validatedData,
       { new: true }
     );
-
     if (!updatedProduct) {
       return { success: false, message: "Product not found." };
     }
-
     revalidatePath("/admin/products");
     revalidatePath(`/admin/products/${id}`);
-
     return { success: true, data: JSON.parse(JSON.stringify(updatedProduct)), message: "Product updated successfully!" };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -143,7 +153,6 @@ export const updateProduct = async (id: string, formData: FormData) => {
   }
 };
 
-// Delete a product
 export const deleteProduct = async (id: string) => {
   try {
     await connectToDatabase();

@@ -1,58 +1,44 @@
-// src/store/product.store.ts
 import { create } from 'zustand';
+import { getCategories, getBrands, getTaxes, getProducts } from '@/actions/product.actions';
+import { getCurrencySymbol } from '@/actions/currency.actions'; // ✅ NEW: Import getCurrencySymbol action
 
-// Import or define the interfaces for your data types
-interface ICategory { _id: string; name: string; codePrefix?: string; }
-interface IBrand { _id: string; name: string; }
-interface IUnit { _id: string; unitName: string; }
-interface ITax { _id: string; taxName: string; }
+import { ICategory } from '@/lib/models/category';
+import { IBrand } from '@/lib/models/brand';
+import { ITax } from '@/lib/models/tax';
+import { IProduct } from '@/lib/models/product';
+// ✅ REMOVED: import of IUnit
 
-interface Product {
-  _id: string;
-  category: string;
-  brand: string;
-  productCode: string;
-  productName: string;
-  description?: string;
-  unit: string;
-  tax: string;
-  purchasePrice: number;
-  packingCharges: number;
-  laborCharges: number;
-  electricityCharges: number;
-  others1: number;
-  others2: number;
-  totalPrice: number;
-  stockQuantity: number;
-  stockAlertQuantity: number;
-  image?: string;
-  qrCode?: string;
-}
-
-// ✅ UPDATED INTERFACE
 interface ProductState {
-  products: Product[];
-  selectedProduct: Product | null;
-  setProducts: (products: Product[]) => void;
-  setSelectedProduct: (product: Product | null) => void;
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  removeProduct: (productId: string) => void;
-
-  // ✅ ADDED NEW FIELDS FOR DROPDOWNS
+  products: IProduct[];
+  selectedProduct: IProduct | null;
   categories: ICategory[];
   brands: IBrand[];
-  units: IUnit[];
   taxes: ITax[];
+  currencySymbol: string; // ✅ NEW: Add currencySymbol state
+  isLoading: boolean;
+  setProducts: (products: IProduct[]) => void;
+  setSelectedProduct: (product: IProduct | null) => void;
+  addProduct: (product: IProduct) => void;
+  updateProduct: (product: IProduct) => void;
+  removeProduct: (productId: string) => void;
+
   setCategories: (categories: ICategory[]) => void;
   setBrands: (brands: IBrand[]) => void;
-  setUnits: (units: IUnit[]) => void;
   setTaxes: (taxes: ITax[]) => void;
+  
+  fetchFormData: () => Promise<void>;
+  fetchTableData: () => Promise<void>;
 }
 
 export const useProductStore = create<ProductState>((set) => ({
   products: [],
   selectedProduct: null,
+  categories: [],
+  brands: [],
+  taxes: [],
+  currencySymbol: '', // ✅ NEW: Initialize currencySymbol
+  isLoading: false,
+
   setProducts: (products) => set({ products }),
   setSelectedProduct: (product) => set({ selectedProduct: product }),
   addProduct: (product) => set((state) => ({ products: [...state.products, product] })),
@@ -67,13 +53,43 @@ export const useProductStore = create<ProductState>((set) => ({
       products: state.products.filter((p) => p._id !== productId),
     })),
 
-  // ✅ INITIALIZE NEW FIELDS
-  categories: [],
-  brands: [],
-  units: [],
-  taxes: [],
   setCategories: (categories) => set({ categories }),
   setBrands: (brands) => set({ brands }),
-  setUnits: (units) => set({ units }),
   setTaxes: (taxes) => set({ taxes }),
+  
+  fetchFormData: async () => {
+    set({ isLoading: true });
+    try {
+      const [catResult, brandResult, taxResult, currencyResult] = await Promise.all([
+        getCategories(),
+        getBrands(),
+        getTaxes(),
+        getCurrencySymbol(), // ✅ NEW: Fetch the currency symbol
+      ]);
+
+      if (catResult.success) set({ categories: catResult.data });
+      if (brandResult.success) set({ brands: brandResult.data });
+      if (taxResult.success) set({ taxes: taxResult.data });
+      if (currencyResult.success) set({ currencySymbol: currencyResult.data }); // ✅ NEW: Set the currency symbol
+      set({ isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch form data:', error);
+      set({ isLoading: false });
+    }
+  },
+
+  fetchTableData: async () => {
+    set({ isLoading: true });
+    try {
+      const result = await getProducts();
+      if (result.success) {
+        set({ products: result.data, isLoading: false });
+      } else {
+        set({ isLoading: false, products: [] });
+      }
+    } catch (error) {
+      console.error('Failed to fetch table data:', error);
+      set({ isLoading: false, products: [] });
+    }
+  },
 }));

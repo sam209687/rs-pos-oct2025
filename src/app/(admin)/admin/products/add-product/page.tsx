@@ -1,6 +1,7 @@
 // src/app/(admin)/admin/products/add-product/page.tsx
-import {Heading} from "@/components/ui/heading";
 import ProductForm from "@/components/forms/ProductForm";
+import {Heading} from "@/components/ui/heading";
+// import ProductForm from "@/components/forms/ProductForm";
 
 const AddProductPage = () => {
   return (

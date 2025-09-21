@@ -1,5 +1,4 @@
 // src/actions/variant.actions.ts
-
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -8,7 +7,7 @@ import Variant from "@/lib/models/variant";
 import { variantSchema } from "@/lib/schemas";
 import { z } from "zod";
 
-// ✅ DEFINE A UNIFIED INTERFACE FOR DATA TRANSFER
+// ✅ CORRECTED: Added 'discount' to the VariantData interface
 export interface VariantData {
   product: string;
   variantVolume: number;
@@ -16,16 +15,19 @@ export interface VariantData {
   variantColor?: string;
   price: number;
   mrp: number;
+  discount?: number; // ✅ NEW: `discount` field
   image?: string;
+  qrCode?: string;
 }
 
 // Fetch all variants
 export const getVariants = async () => {
   try {
     await connectToDatabase();
-    const variants = await Variant.find({}).lean();
+    const variants = await Variant.find({}).populate("product unit").lean();
     return { success: true, data: JSON.parse(JSON.stringify(variants)) };
   } catch (error) {
+    console.error("Failed to fetch variants:", error);
     return { success: false, message: "Failed to fetch variants." };
   }
 };
@@ -34,7 +36,7 @@ export const getVariants = async () => {
 export const getVariantById = async (id: string) => {
   try {
     await connectToDatabase();
-    const variant = await Variant.findById(id).lean();
+    const variant = await Variant.findById(id).populate("product unit").lean();
     if (!variant) {
       return { success: false, message: "Variant not found." };
     }
@@ -47,6 +49,7 @@ export const getVariantById = async (id: string) => {
 // Create a new variant
 export const createVariant = async (data: VariantData) => {
   try {
+    // Note: The schema should now also be updated to reflect the new discount field.
     const validatedData = variantSchema.parse(data);
     await connectToDatabase();
     const newVariant = new Variant(validatedData);

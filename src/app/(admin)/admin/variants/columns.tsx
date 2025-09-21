@@ -4,7 +4,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, Edit, QrCode, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-import { deleteVariant, generateVariantQRCode } from "@/actions/variant.actions";
+import { deleteVariant } from "@/actions/variant.actions";
+import { generateVariantQRCode } from "@/actions/qrcode.actions";
 import { toast } from "sonner";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -22,7 +21,9 @@ import { IPopulatedVariant } from "@/lib/models/variant";
 
 export const columns: ColumnDef<IPopulatedVariant>[] = [
   {
-    accessorKey: "productName", // ✅ CORRECTED: Use the top-level 'productName'
+    accessorKey: "product.productName", 
+    // ✅ FIX: The id should match the accessorKey for filtering to work
+    id: "product.productName", 
     header: ({ column }) => {
       return (
         <Button
@@ -34,16 +35,10 @@ export const columns: ColumnDef<IPopulatedVariant>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => {
-      return row.original.product.productName;
-    }
   },
   {
     accessorKey: "variantColor",
     header: "Color",
-    cell: ({ row }) => {
-      return row.original.variantColor;
-    }
   },
   {
     accessorKey: "price",
@@ -72,6 +67,7 @@ export const columns: ColumnDef<IPopulatedVariant>[] = [
     accessorKey: "variantVolume",
     header: "Volume",
     cell: ({ row }) => {
+      // The `unit` object should be populated by the server action
       return `${row.original.variantVolume} ${row.original.unit.name}`;
     }
   },
@@ -108,7 +104,7 @@ export const columns: ColumnDef<IPopulatedVariant>[] = [
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
               <span className="sr-only">Open menu</span>
-              <span className="h-4 w-4">...</span>
+              ...
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

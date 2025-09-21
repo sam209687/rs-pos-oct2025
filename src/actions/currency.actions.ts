@@ -2,17 +2,40 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { connectToDatabase } from "@/lib/db";
+import Currency from "@/lib/models/currency";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+// Define a type for the Currency document to help with type safety
+interface ICurrency {
+  _id: string;
+  sNo: string;
+  currencySymbol: string;
+  createdAt: Date;
+}
+
+export const getCurrencySymbol = async () => {
+  try {
+    await connectToDatabase();
+    // ✅ FIX: Use findOne to get a single document and be explicit with type
+    const currency = await Currency.findOne({ sNo: "1" }).lean() as ICurrency | null;
+    
+    if (currency && currency.currencySymbol) {
+      return { success: true, data: currency.currencySymbol, message: "Currency symbol fetched successfully." };
+    }
+    
+    return { success: false, message: "Currency symbol not found." };
+  } catch (error) {
+    console.error("Failed to fetch currency symbol:", error);
+    return { success: false, message: "Failed to fetch currency symbol." };
+  }
+};
 
 // Fetch all currencies
 export const getCurrencies = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/currency`, {
-      cache: "no-store",
-    });
-    const result = await response.json();
-    return result;
+    await connectToDatabase();
+    const currencies = await Currency.find({}).lean();
+    return { success: true, data: JSON.parse(JSON.stringify(currencies)) };
   } catch (error) {
     return { success: false, message: "Failed to fetch currencies." };
   }
@@ -21,20 +44,14 @@ export const getCurrencies = async () => {
 // Create a new currency
 export const createCurrency = async (formData: FormData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/currency`, {
-      method: "POST",
-      body: JSON.stringify(Object.fromEntries(formData)),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      revalidatePath("/admin/currency");
-    }
-    return result;
+    await connectToDatabase();
+    const data = Object.fromEntries(formData);
+    const newCurrency = new Currency(data);
+    await newCurrency.save();
+    revalidatePath("/admin/currency");
+    return { success: true, data: JSON.parse(JSON.stringify(newCurrency)), message: "Currency created successfully." };
   } catch (error) {
+    console.error("Failed to create currency:", error);
     return { success: false, message: "Failed to create currency." };
   }
 };
@@ -42,20 +59,16 @@ export const createCurrency = async (formData: FormData) => {
 // Update an existing currency
 export const updateCurrency = async (id: string, formData: FormData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/currency/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(Object.fromEntries(formData)),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      revalidatePath("/admin/currency");
+    await connectToDatabase();
+    const data = Object.fromEntries(formData);
+    const updatedCurrency = await Currency.findByIdAndUpdate(id, data, { new: true });
+    if (!updatedCurrency) {
+      return { success: false, message: "Currency not found." };
     }
-    return result;
+    revalidatePath("/admin/currency");
+    return { success: true, data: JSON.parse(JSON.stringify(updatedCurrency)), message: "Currency updated successfully." };
   } catch (error) {
+    console.error("Failed to update currency:", error);
     return { success: false, message: "Failed to update currency." };
   }
 };
@@ -63,16 +76,15 @@ export const updateCurrency = async (id: string, formData: FormData) => {
 // Delete a currency
 export const deleteCurrency = async (id: string) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/currency/${id}`, {
-      method: "DELETE",
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      revalidatePath("/admin/currency");
+    await connectToDatabase();
+    const deletedCurrency = await Currency.findByIdAndDelete(id);
+    if (!deletedCurrency) {
+      return { success: false, message: "Currency not found." };
     }
-    return result;
+    revalidatePath("/admin/currency");
+    return { success: true, message: "Currency deleted successfully." };
   } catch (error) {
+    console.error("Failed to delete currency:", error);
     return { success: false, message: "Failed to delete currency." };
   }
 };

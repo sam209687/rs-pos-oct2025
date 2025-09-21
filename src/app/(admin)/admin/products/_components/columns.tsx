@@ -4,14 +4,14 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Edit, Trash2 } from "lucide-react";
-import { IProduct } from "@/lib/models/product";
+import { IPopulatedProduct } from "@/lib/models/product"; // Use the populated product type
 import { useRouter } from "next/navigation";
 
 export const columns = (
   onDelete: (id: string) => Promise<void>,
   loading: boolean
-): ColumnDef<IProduct>[] => {
-  const router = useRouter(); // Call useRouter directly inside this client component
+): ColumnDef<IPopulatedProduct>[] => { // Use the populated product type
+  const router = useRouter(); 
   return [
     {
       accessorKey: "productName",
@@ -28,11 +28,8 @@ export const columns = (
       },
     },
     {
-      accessorKey: "category",
+      accessorKey: "category.name", // ✅ FIX: Use dot notation for the populated field
       header: "Category",
-      cell: ({ row }) => (
-        <span>{String(row.original.category)}</span>
-      ),
     },
     {
       accessorKey: "stockQuantity",

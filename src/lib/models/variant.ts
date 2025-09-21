@@ -1,16 +1,17 @@
 // src/lib/models/variant.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { IPopulatedProduct } from './product';
+import { IPopulatedProduct, IProduct } from './product';
 import { IUnit } from './unit';
 
 export interface IVariant extends Document {
   _id: string;
-  product: Types.ObjectId;
+  product: Types.ObjectId | IProduct; // Altered for clarity
   variantVolume: number;
-  unit: Types.ObjectId;
+  unit: Types.ObjectId | IUnit; // Altered for clarity
   variantColor?: string;
   price: number;
-  mrp : number;
+  mrp: number;
+  discount: number; // ✅ NEW: `discount` field
   image: string;
   qrCode?: string;
 }
@@ -45,12 +46,17 @@ const VariantSchema: Schema = new Schema(
       required: [true, "Price is required."],
     },
     mrp: {
-       type : Number,
-      required : true,
+      type: Number,
+      required: true,
     },
-    image : {
-      type:String,
-      trim:true,
+    discount: { // ✅ NEW: `discount` field
+      type: Number,
+      required: true,
+      default: 0
+    },
+    image: {
+      type: String,
+      trim: true,
     },
     qrCode: {
       type: String,
