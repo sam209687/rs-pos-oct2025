@@ -96,22 +96,28 @@ export const productSchema = z.object({
   // ✅ REMOVED: unit: z.string().min(1, "Unit is required."),
   tax: z.string().optional(),
   purchasePrice: z.coerce.number().min(0, "Purchase price must be a non-negative number."),
+  sellingPrice: z.coerce.number().min(0, "Selling price must be a non-negative number."), // ✅ NEW: Selling price field
   packingCharges: z.coerce.number().optional(),
   laborCharges: z.coerce.number().optional(),
   electricityCharges: z.coerce.number().optional(),
   others1: z.coerce.number().optional(),
   others2: z.coerce.number().optional(),
   totalPrice: z.coerce.number().optional(),
-  stockQuantity: z.coerce.number().optional(),
-  stockAlertQuantity: z.coerce.number().optional(),
+  // ✅ REMOVED: stockQuantity: z.coerce.number().optional(),
+  // ✅ REMOVED: stockAlertQuantity: z.coerce.number().optional(),
   // ✅ REMOVED: image: z.string().optional(),
   // ✅ REMOVED: qrCode: z.string().optional(),
 });
 
-// NEW: Batch Schema
+
+// Batch Schema
+
 export const batchSchema = z.object({
   product: z.string().min(1, "Product is required."),
   batchNumber: z.string().min(1, "Batch number is required."),
+  vendorName: z.string().min(2, "Vendor name is required."), // ✅ NEW: Vendor name
+  qty: z.coerce.number().min(1, "Quantity must be at least 1."), // ✅ NEW: Quantity
+  price: z.coerce.number().min(0.01, "Price must be a positive number."), // ✅ NEW: Price
 });
 
 // ✅ CORRECTED: Variants Schema
@@ -123,12 +129,10 @@ export const variantSchema = z.object({
   price: z.coerce.number().min(0, "Price must be a non-negative number."),
   mrp: z.coerce.number().min(0, "MRP must be a non-negative number."),
   discount: z.coerce.number().min(0).max(100).optional(),
+  stockQuantity: z.coerce.number().min(0, "Stock quantity must be a non-negative number."), // ✅ NEW: Stock quantity field
+  stockAlertQuantity: z.coerce.number().min(0, "Stock alert quantity must be a non-negative number."), // ✅ NEW: Stock alert quantity field
   image: z.any().optional(),
   qrCode: z.any().optional(),
-  // ✅ REMOVED: These are not part of the variant model
-  // productTotalPrice: z.coerce.number().optional(),
-  // stockQuantity: z.coerce.number().optional(),
-  // calculatedPricePerUnit: z.coerce.number().optional(),
 });
 
 // oec.schema.ts
@@ -150,4 +154,3 @@ export const customerSchema = z.object({
 
 
 // Admin Panel Schema
-

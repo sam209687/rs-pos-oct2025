@@ -57,7 +57,7 @@ export const columns: ColumnDef<IPopulatedVariant>[] = [
       const price = parseFloat(row.getValue("price"));
       const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: "INR",
       }).format(price);
 
       return formatted;

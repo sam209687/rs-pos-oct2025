@@ -1,22 +1,21 @@
 import { create } from 'zustand';
-import { getCategories, getBrands, getTaxes, getProducts } from '@/actions/product.actions';
-import { getCurrencySymbol } from '@/actions/currency.actions'; // ✅ NEW: Import getCurrencySymbol action
-
+import { getCategories, getBrands, getTaxes, getProducts, getProductById } from '@/actions/product.actions';
+import { getCurrencySymbol } from '@/actions/currency.actions';
 import { ICategory } from '@/lib/models/category';
 import { IBrand } from '@/lib/models/brand';
 import { ITax } from '@/lib/models/tax';
-import { IProduct } from '@/lib/models/product';
-// ✅ REMOVED: import of IUnit
+import { IProduct, IPopulatedProduct } from '@/lib/models/product';
+import { toast } from 'sonner';
 
 interface ProductState {
-  products: IProduct[];
+  products: IPopulatedProduct[];
   selectedProduct: IProduct | null;
   categories: ICategory[];
   brands: IBrand[];
   taxes: ITax[];
-  currencySymbol: string; // ✅ NEW: Add currencySymbol state
+  currencySymbol: string;
   isLoading: boolean;
-  setProducts: (products: IProduct[]) => void;
+  setProducts: (products: IPopulatedProduct[]) => void;
   setSelectedProduct: (product: IProduct | null) => void;
   addProduct: (product: IProduct) => void;
   updateProduct: (product: IProduct) => void;
@@ -36,21 +35,35 @@ export const useProductStore = create<ProductState>((set) => ({
   categories: [],
   brands: [],
   taxes: [],
-  currencySymbol: '', // ✅ NEW: Initialize currencySymbol
+  currencySymbol: '',
   isLoading: false,
 
   setProducts: (products) => set({ products }),
   setSelectedProduct: (product) => set({ selectedProduct: product }),
-  addProduct: (product) => set((state) => ({ products: [...state.products, product] })),
-  updateProduct: (updatedProduct) =>
-    set((state) => ({
-      products: state.products.map((p) =>
-        p._id === updatedProduct._id ? updatedProduct : p
-      ),
-    })),
+  
+  // ✅ FIX: Refetch the populated product after creation to ensure the correct type
+  addProduct: async (product) => {
+    const populatedProductResult = await getProductById(product._id);
+    if (populatedProductResult.success && populatedProductResult.data) {
+      set((state) => ({ products: [...state.products, populatedProductResult.data as unknown as IPopulatedProduct] }));
+    }
+  },
+
+  // ✅ FIX: Refetch the populated product after update to ensure the correct type
+  updateProduct: async (updatedProduct) => {
+    const populatedProductResult = await getProductById(updatedProduct._id);
+    if (populatedProductResult.success && populatedProductResult.data) {
+      set((state) => ({
+        products: state.products.map((p) =>
+          p._id.toString() === updatedProduct._id.toString() ? populatedProductResult.data as unknown as IPopulatedProduct : p
+        ),
+      }));
+    }
+  },
+
   removeProduct: (productId) =>
     set((state) => ({
-      products: state.products.filter((p) => p._id !== productId),
+      products: state.products.filter((p) => p._id.toString() !== productId),
     })),
 
   setCategories: (categories) => set({ categories }),
@@ -64,13 +77,13 @@ export const useProductStore = create<ProductState>((set) => ({
         getCategories(),
         getBrands(),
         getTaxes(),
-        getCurrencySymbol(), // ✅ NEW: Fetch the currency symbol
+        getCurrencySymbol(),
       ]);
 
       if (catResult.success) set({ categories: catResult.data });
       if (brandResult.success) set({ brands: brandResult.data });
       if (taxResult.success) set({ taxes: taxResult.data });
-      if (currencyResult.success) set({ currencySymbol: currencyResult.data }); // ✅ NEW: Set the currency symbol
+      if (currencyResult.success) set({ currencySymbol: currencyResult.data });
       set({ isLoading: false });
     } catch (error) {
       console.error('Failed to fetch form data:', error);
@@ -83,7 +96,7 @@ export const useProductStore = create<ProductState>((set) => ({
     try {
       const result = await getProducts();
       if (result.success) {
-        set({ products: result.data, isLoading: false });
+        set({ products: result.data as IPopulatedProduct[], isLoading: false });
       } else {
         set({ isLoading: false, products: [] });
       }

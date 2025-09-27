@@ -1,3 +1,5 @@
+// src/app/api/batche/route.ts
+
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import Batch from "@/lib/models/batch";
@@ -17,7 +19,6 @@ export async function GET() {
     return NextResponse.json({ success: true, data: batches, message: "Batches fetched successfully!" });
   } catch (error: unknown) {
     console.error("Failed to fetch batches:", error);
-    // Safely check and use the error message
     const message = error instanceof Error ? error.message : "An unknown error occurred.";
     return NextResponse.json({ success: false, message: "Failed to fetch batches: " + message }, { status: 500 });
   }
@@ -45,30 +46,5 @@ export async function POST(request: Request) {
     console.error("Failed to create batch:", error);
     const message = error instanceof Error ? error.message : "An unknown error occurred.";
     return NextResponse.json({ success: false, message: "Failed to create batch: " + message }, { status: 500 });
-  }
-}
-
-// Handle DELETE request to delete a batch
-export async function DELETE(request: Request) {
-  try {
-    await connectToDatabase();
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ success: false, message: "Batch ID is required." }, { status: 400 });
-    }
-
-    const deletedBatch = await Batch.findByIdAndDelete(id);
-
-    if (!deletedBatch) {
-      return NextResponse.json({ success: false, message: "Batch not found." }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, message: "Batch deleted successfully!" }, { status: 200 });
-  } catch (error: unknown) {
-    console.error("Failed to delete batch:", error);
-    const message = error instanceof Error ? error.message : "An unknown error occurred.";
-    return NextResponse.json({ success: false, message: "Failed to delete batch: " + message }, { status: 500 });
   }
 }

@@ -4,13 +4,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { IProduct } from "@/lib/models/product";
+import { IPopulatedProduct } from "@/lib/models/product"; // ✅ FIX: Use the populated product type
 import { deleteProduct } from "@/actions/product.actions";
 import { DataTable } from "@/components/ui/data-table";
-import { columns } from "./columns"; // Import the columns function
+import { columns } from "./columns";
 
 interface ProductListProps {
-  products: IProduct[];
+  products: IPopulatedProduct[]; // ✅ FIX: Use the populated product type
 }
 
 const ProductList: React.FC<ProductListProps> = ({ products }) => {
@@ -27,14 +27,14 @@ const ProductList: React.FC<ProductListProps> = ({ products }) => {
     const result = await deleteProduct(id);
     if (result.success) {
       toast.success("Product deleted successfully.");
-      setData(data.filter((product) => product._id !== id));
+      setData(data.filter((product) => product._id.toString() !== id));
       router.refresh(); 
     } else {
       toast.error(result.message);
     }
     setLoading(false);
   };
-    // Correctly call the columns function with only two arguments
+    
   const productColumns = columns(handleDelete, loading); 
 
   return (

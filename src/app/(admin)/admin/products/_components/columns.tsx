@@ -1,16 +1,15 @@
-// src/app/(admin)/admin/products/_components/columns.tsx
 "use client"; // Make sure this is at the very top
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Edit, Trash2 } from "lucide-react";
-import { IPopulatedProduct } from "@/lib/models/product"; // Use the populated product type
+import { IPopulatedProduct } from "@/lib/models/product";
 import { useRouter } from "next/navigation";
 
 export const columns = (
   onDelete: (id: string) => Promise<void>,
   loading: boolean
-): ColumnDef<IPopulatedProduct>[] => { // Use the populated product type
+): ColumnDef<IPopulatedProduct>[] => {
   const router = useRouter(); 
   return [
     {
@@ -28,18 +27,16 @@ export const columns = (
       },
     },
     {
-      accessorKey: "category.name", // ✅ FIX: Use dot notation for the populated field
+      accessorKey: "category.name",
       header: "Category",
     },
-    {
-      accessorKey: "stockQuantity",
-      header: "Stock Quantity",
-    },
+    // ✅ REMOVED: The stockQuantity column as it was removed from the schema
     {
       accessorKey: "totalPrice",
       header: "Total Price",
       cell: ({ row }) => (
-        <span>₹{row.original.totalPrice.toFixed(2)}</span>
+        // ✅ FIX: Added a nullish coalescing operator to prevent TypeError
+        <span>₹{(row.original.totalPrice ?? 0).toFixed(2)}</span>
       ),
     },
     {

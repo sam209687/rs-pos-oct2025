@@ -21,9 +21,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
 import { IProduct } from "@/lib/models/product";
-import { ICategory } from "@/lib/models/category";
+// import { ICategory } from "@/lib/models/category';
 import { IBrand } from "@/lib/models/brand";
 import { ITax } from "@/lib/models/tax";
+import { ICategory } from "@/lib/models/category";
 
 interface ProductFormProps {
   initialData?: IProduct | null;
@@ -34,10 +35,10 @@ type ProductFormValues = z.infer<typeof productSchema>;
 const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  // ✅ FIX: Get currencySymbol from the store
   const { categories, brands, taxes, fetchFormData, isLoading, currencySymbol } = useProductStore();
 
   const isEditing = !!initialData;
+  const numberInputClass = "w-full [appearance:textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0";
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -49,14 +50,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
       description: initialData?.description || "",
       tax: initialData?.tax || "", 
       purchasePrice: initialData?.purchasePrice || 0,
+      sellingPrice: initialData?.sellingPrice || 0,
       packingCharges: initialData?.packingCharges || 0,
       laborCharges: initialData?.laborCharges || 0,
       electricityCharges: initialData?.electricityCharges || 0,
       others1: initialData?.others1 || 0,
       others2: initialData?.others2 || 0,
       totalPrice: initialData?.totalPrice || 0,
-      stockQuantity: initialData?.stockQuantity || 0,
-      stockAlertQuantity: initialData?.stockAlertQuantity || 0,
     } as ProductFormValues,
   });
 
@@ -93,13 +93,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
     const subscription = form.watch((value, { name }) => {
       if ([
         "purchasePrice",
+        "sellingPrice",
         "packingCharges",
         "laborCharges",
         "electricityCharges",
         "others1",
         "others2"
       ].includes(name as string)) {
-        const total = (Number(value.purchasePrice) || 0) +
+        const total = (Number(value.sellingPrice) || 0) +
                       (Number(value.packingCharges) || 0) +
                       (Number(value.laborCharges) || 0) +
                       (Number(value.electricityCharges) || 0) +
@@ -271,7 +272,20 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
               <FormItem>
                 <FormLabel>Purchase Price</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} />
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="sellingPrice"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Selling Price</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -292,34 +306,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="stockQuantity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Stock Quantity (SKU)</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} disabled={isPending} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="stockAlertQuantity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Stock Alert Quantity</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} disabled={isPending} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {/* ✅ REMOVED: Stock Quantity fields are no longer needed */}
         
         <h2 className="text-lg font-semibold mt-6">Additional Charges</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -330,7 +317,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
               <FormItem>
                 <FormLabel>Packing Charges</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} />
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -343,7 +330,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
               <FormItem>
                 <FormLabel>Labor Charges</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} />
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -356,7 +343,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
               <FormItem>
                 <FormLabel>Electricity Charges</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} />
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -369,7 +356,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
               <FormItem>
                 <FormLabel>Others-1</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} />
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -382,7 +369,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
               <FormItem>
                 <FormLabel>Others-2</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} />
+                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

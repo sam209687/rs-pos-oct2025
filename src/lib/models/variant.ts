@@ -5,13 +5,15 @@ import { IUnit } from './unit';
 
 export interface IVariant extends Document {
   _id: string;
-  product: Types.ObjectId | IProduct; // Altered for clarity
+  product: Types.ObjectId | IProduct;
   variantVolume: number;
-  unit: Types.ObjectId | IUnit; // Altered for clarity
+  unit: Types.ObjectId | IUnit;
   variantColor?: string;
   price: number;
   mrp: number;
-  discount: number; // ✅ NEW: `discount` field
+  discount: number;
+  stockQuantity: number; // ✅ NEW: Stock quantity field
+  stockAlertQuantity: number; // ✅ NEW: Stock alert quantity field
   image: string;
   qrCode?: string;
 }
@@ -49,7 +51,17 @@ const VariantSchema: Schema = new Schema(
       type: Number,
       required: true,
     },
-    discount: { // ✅ NEW: `discount` field
+    discount: {
+      type: Number,
+      required: true,
+      default: 0
+    },
+    stockQuantity: { // ✅ NEW: Stock quantity schema field
+      type: Number,
+      required: true,
+      default: 0
+    },
+    stockAlertQuantity: { // ✅ NEW: Stock alert quantity schema field
       type: Number,
       required: true,
       default: 0

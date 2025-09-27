@@ -7,7 +7,15 @@ import { connectToDatabase } from "@/lib/db";
 // This is the data structure we'll send from the client
 export type InvoiceDataPayload = {
   customerId: string;
-  items: any[]; // A simplified version of cart items
+  // ✅ FIX: Define the structure of the items array to include variantId
+  items: {
+    variantId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    mrp: number;
+    gstRate: number;
+  }[];
   subtotal: number;
   discount: number;
   packingChargeDiscount: number;
@@ -24,7 +32,7 @@ export async function createInvoice(invoiceData: InvoiceDataPayload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer: invoiceData.customerId,
-        items: invoiceData.items,
+        items: invoiceData.items, // This now includes the variantId
         subtotal: invoiceData.subtotal,
         discount: invoiceData.discount,
         packingChargeDiscount: invoiceData.packingChargeDiscount,
@@ -40,7 +48,7 @@ export async function createInvoice(invoiceData: InvoiceDataPayload) {
     }
 
     const savedInvoice: IInvoice = await response.json();
-    revalidatePath("/admin/invoices"); // Assuming you'll have an invoices page
+    revalidatePath("/admin/invoices");
 
     return { success: true, data: savedInvoice };
 

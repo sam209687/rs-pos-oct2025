@@ -1,4 +1,3 @@
-// src/components/forms/variant-form.tsx
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
@@ -8,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import Image from "next/image";
-import QRCode from 'qrcode';
+import QRCode from "qrcode";
 import { Loader2, QrCode, XCircle } from "lucide-react";
 
 import {
@@ -20,20 +19,28 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-
-import { getProductById } from "@/actions/product.actions";
-import { createVariant, updateVariant, VariantData } from "@/actions/variant.actions";
+import {
+  createVariant,
+  updateVariant,
+  VariantData,
+} from "@/actions/variant.actions";
 import { useVariantStore } from "@/store/variantStore";
 import { variantSchema } from "@/lib/schemas";
-import { IVariant } from "@/lib/models/variant";
+import { IPopulatedVariant } from "@/lib/models/variant";
 import { IUnit } from "@/lib/models/unit";
-import { IProduct } from "@/lib/models/product";
+import { IPopulatedProduct } from "@/lib/models/product";
 
 interface VariantFormProps {
-  initialData?: IVariant | null;
+  initialData?: IPopulatedVariant | null;
 }
 
 type VariantFormValues = z.infer<typeof variantSchema>;
@@ -52,31 +59,37 @@ const numberInputStyles = `
 const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const { products, units, fetchFormData, isLoading } = useVariantStore();
+  const {
+    products,
+    units,
+    fetchFormData,
+    fetchProductDetails,
+    productDetails,
+    isLoading,
+  } = useVariantStore();
 
-  const [productDetails, setProductDetails] = useState({
-    productCode: "",
-    totalPrice: 0,
-    stockQuantity: 0,
-  });
-
-  const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image || null);
-  const [qrCodePreview, setQrCodePreview] = useState<string | null>(initialData?.qrCode || null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    initialData?.image || null
+  );
+  const [qrCodePreview, setQrCodePreview] = useState<string | null>(
+    initialData?.qrCode || null
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
 
   const isEditing = !!initialData;
 
   const form = useForm<VariantFormValues>({
     resolver: zodResolver(variantSchema),
     defaultValues: {
-      product: initialData?.product || "",
+      product: initialData?.product._id || "",
       variantVolume: initialData?.variantVolume || 0,
-      unit: initialData?.unit || "",
+      unit: initialData?.unit._id || "",
       variantColor: initialData?.variantColor || "",
       price: initialData?.price || 0,
       mrp: initialData?.mrp || 0,
       discount: initialData?.discount || 0,
+      stockQuantity: initialData?.stockQuantity || 0,
+      stockAlertQuantity: initialData?.stockAlertQuantity || 0,
       image: initialData?.image || undefined,
       qrCode: initialData?.qrCode || undefined,
     } as VariantFormValues,
@@ -88,62 +101,18 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
 
   useEffect(() => {
     const selectedProductId = form.watch("product");
-    
-    console.log("useEffect: 'product' field changed to:", selectedProductId); // ✅ LOG 1: Check if hook fires
-
     if (selectedProductId) {
-      const fetchProductDetails = async () => {
-        console.log("Fetching details for product ID:", selectedProductId); // ✅ LOG 2: Check if fetch is initiated
-        try {
-          const productResult = await getProductById(selectedProductId);
-          console.log("Product fetch result:", productResult); // ✅ LOG 3: Check API response
-
-          if (productResult.success && productResult.data) {
-            const product = productResult.data;
-            console.log("Product data received:", product); // ✅ LOG 4: Inspect the data
-            setProductDetails({
-              productCode: product.productCode || "",
-              totalPrice: product.totalPrice || 0,
-              stockQuantity: product.stockQuantity || 0,
-            });
-            console.log("productDetails state updated:", {
-              productCode: product.productCode || "",
-              totalPrice: product.totalPrice || 0,
-              stockQuantity: product.stockQuantity || 0,
-            }); // ✅ LOG 5: Verify state update
-          } else {
-            console.log("Product fetch failed or returned no data. Clearing details.");
-            setProductDetails({
-              productCode: "",
-              totalPrice: 0,
-              stockQuantity: 0,
-            });
-          }
-        } catch (error) {
-          console.error("Failed to fetch product details:", error);
-          setProductDetails({
-            productCode: "",
-            totalPrice: 0,
-            stockQuantity: 0,
-          });
-        }
-      };
-      fetchProductDetails();
+      fetchProductDetails(selectedProductId);
     } else {
-      console.log("Product ID is not selected. Clearing details.");
-      setProductDetails({
-        productCode: "",
-        totalPrice: 0,
-        stockQuantity: 0,
-      });
+      useVariantStore.setState({ productDetails: { productCode: "", totalPrice: 0 } });
     }
-  }, [form.watch("product")]);
+  }, [form.watch("product"), fetchProductDetails]);
 
   const calculateDiscount = (price: number, mrp: number): number => {
     if (mrp <= 0) return 0;
     return Math.round(((mrp - price) / mrp) * 100);
   };
-  
+
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "price" || name === "mrp") {
@@ -168,19 +137,6 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       form.setValue("image", undefined);
     }
   };
-  
-  const handleQrCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setQrCodeFile(file);
-      setQrCodePreview(URL.createObjectURL(file));
-      form.setValue("qrCode", file);
-    } else {
-      setQrCodeFile(null);
-      setQrCodePreview(null);
-      form.setValue("qrCode", undefined);
-    }
-  };
 
   const onGenerateQrCode = async () => {
     const values = form.getValues();
@@ -188,7 +144,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       toast.error("Product code is required to generate QR code.");
       return;
     }
-    
+
     const qrData = JSON.stringify({
       productCode: productDetails.productCode,
       price: values.price,
@@ -197,15 +153,15 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       variantVolume: values.variantVolume,
       unit: values.unit,
       variantColor: values.variantColor,
+      stockQuantity: values.stockQuantity,
+      stockAlertQuantity: values.stockAlertQuantity,
     });
-    
+
     try {
       const qrCodeUrl = await QRCode.toDataURL(qrData);
-      const blob = await fetch(qrCodeUrl).then(res => res.blob());
-      const file = new File([blob], 'variant-qr.png', { type: 'image/png' });
-      setQrCodeFile(file);
-      setQrCodePreview(URL.createObjectURL(file));
+      setQrCodePreview(qrCodeUrl);
       toast.success("QR Code generated successfully!");
+      form.setValue("qrCode", qrCodeUrl);
     } catch (err) {
       toast.error("Failed to generate QR Code.");
     }
@@ -214,23 +170,43 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
   const onSubmit = async (values: VariantFormValues) => {
     startTransition(async () => {
       let result;
-      let imagePath = isEditing ? (initialData?.image || "") : "";
-      let qrCodePath = isEditing ? (initialData?.qrCode || "") : "";
+      let imagePath = isEditing ? initialData?.image || "" : "";
+      let qrCodePath = isEditing ? initialData?.qrCode || "" : "";
 
       if (imageFile) {
         const formData = new FormData();
         formData.append("file", imageFile);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
         const data = await res.json();
-        if (data.success) { imagePath = data.data.url; } else { toast.error("Image upload failed."); return; }
+        if (data.success) {
+          imagePath = data.data.url;
+        } else {
+          toast.error("Image upload failed.");
+          return;
+        }
       }
-      
-      if (qrCodeFile) {
-        const formData = new FormData();
-        formData.append("file", qrCodeFile);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
+
+      if (qrCodePreview) {
+        const qrCodeBlob = await fetch(qrCodePreview).then((res) => res.blob());
+        const qrCodeFormData = new FormData();
+        qrCodeFormData.append(
+          "file",
+          new File([qrCodeBlob], "variant-qr.png", { type: "image/png" })
+        );
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: qrCodeFormData,
+        });
         const data = await res.json();
-        if (data.success) { qrCodePath = data.data.url; } else { toast.error("QR Code upload failed."); return; }
+        if (data.success) {
+          qrCodePath = data.data.url;
+        } else {
+          toast.error("QR Code upload failed.");
+          return;
+        }
       }
 
       const variantData: VariantData = {
@@ -239,6 +215,8 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
         price: Number(values.price),
         variantVolume: Number(values.variantVolume),
         discount: Number(values.discount),
+        stockQuantity: Number(values.stockQuantity),
+        stockAlertQuantity: Number(values.stockAlertQuantity),
         image: imagePath,
         qrCode: qrCodePath,
       };
@@ -278,15 +256,21 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Product</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isPending}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a product" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {products.map((product: IProduct) => (
-                        <SelectItem key={product._id} value={product._id}>{product.productName}</SelectItem>
+                      {products.map((product: IPopulatedProduct) => (
+                        <SelectItem key={product._id} value={product._id}>
+                          {product.productName}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -303,19 +287,15 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
             <FormItem>
               <FormLabel>Product Total Price</FormLabel>
               <FormControl>
-                <Input type="number" value={productDetails.totalPrice} disabled />
-              </FormControl>
-            </FormItem>
-            <FormItem>
-              <FormLabel>Stock Quantity (Parent)</FormLabel>
-              <FormControl>
-                <Input type="number" value={productDetails.stockQuantity} disabled />
+                <Input
+                  type="number"
+                  value={productDetails.totalPrice}
+                  disabled
+                />
               </FormControl>
             </FormItem>
           </div>
-
           <Separator className="my-4" />
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               control={form.control}
@@ -324,7 +304,14 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                 <FormItem>
                   <FormLabel>Variant Volume</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} onWheel={(e) => e.currentTarget.blur()} disabled={isPending} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      disabled={isPending}
+                      className={numberInputStyles}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -336,7 +323,11 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unit</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isPending}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a unit" />
@@ -344,7 +335,9 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                     </FormControl>
                     <SelectContent>
                       {units.map((unit: IUnit) => (
-                        <SelectItem key={unit._id} value={unit._id}>{unit.name}</SelectItem>
+                        <SelectItem key={unit._id} value={unit._id}>
+                          {unit.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -359,14 +352,17 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                 <FormItem>
                   <FormLabel>Variant Color</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Red, Blue" {...field} disabled={isPending} />
+                    <Input
+                      placeholder="e.g., Red, Blue"
+                      {...field}
+                      disabled={isPending}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <FormField
               control={form.control}
@@ -375,7 +371,14 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                 <FormItem>
                   <FormLabel>Price of Variant</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} onWheel={(e) => e.currentTarget.blur()} disabled={isPending} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      disabled={isPending}
+                      className={numberInputStyles}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -384,7 +387,9 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
             <div className="flex flex-col space-y-2">
               <p className="text-sm text-muted-foreground">Discount</p>
               <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold">{form.watch('discount')}%</span>
+                <span className="text-xl font-bold">
+                  {form.watch("discount")}%
+                </span>
               </div>
             </div>
             <FormField
@@ -394,14 +399,60 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                 <FormItem>
                   <FormLabel>MRP</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} onWheel={(e) => e.currentTarget.blur()} disabled={isPending} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      disabled={isPending}
+                      className={numberInputStyles}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="stockQuantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stock Quantity (SKU)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      disabled={isPending}
+                      className={numberInputStyles}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="stockAlertQuantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stock Alert Quantity</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      disabled={isPending}
+                      className={numberInputStyles}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -410,16 +461,29 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                 <FormItem>
                   <FormLabel>Variant Image</FormLabel>
                   <FormControl>
-                    <Input type="file" onChange={handleImageChange} disabled={isPending} />
+                    <Input
+                      type="file"
+                      onChange={handleImageChange}
+                      disabled={isPending}
+                    />
                   </FormControl>
                   {imagePreview && (
                     <div className="relative w-48 h-48 mt-2">
-                      <Image src={imagePreview} alt="Image Preview" fill style={{ objectFit: 'contain' }} />
+                      <Image
+                        src={imagePreview}
+                        alt="Image Preview"
+                        fill
+                        style={{ objectFit: "contain" }}
+                      />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => { setImagePreview(null); setImageFile(null); form.setValue("image", undefined); }}
+                        onClick={() => {
+                          setImagePreview(null);
+                          setImageFile(null);
+                          form.setValue("image", undefined);
+                        }}
                         className="absolute top-0 right-0 p-1"
                       >
                         <XCircle className="h-4 w-4 text-red-500" />
@@ -432,21 +496,34 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
             />
             <div>
               <FormLabel>QR Code</FormLabel>
-              <p className="text-sm text-muted-foreground mb-2">Generate or upload a QR code.</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                Generate a QR code.
+              </p>
               <div className="flex space-x-2">
-                <Button type="button" onClick={onGenerateQrCode} disabled={isPending}>
+                <Button
+                  type="button"
+                  onClick={onGenerateQrCode}
+                  disabled={isPending}
+                >
                   <QrCode className="mr-2 h-4 w-4" /> Generate QR Code
                 </Button>
-                <Input type="file" onChange={handleQrCodeChange} className="w-full" />
               </div>
               {qrCodePreview && (
                 <div className="relative w-48 h-48 mt-2">
-                  <Image src={qrCodePreview} alt="QR Code Preview" fill style={{ objectFit: 'contain' }} />
+                  <Image
+                    src={qrCodePreview}
+                    alt="QR Code Preview"
+                    fill
+                    style={{ objectFit: "contain" }}
+                  />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => { setQrCodePreview(null); setQrCodeFile(null); form.setValue("qrCode", undefined); }}
+                    onClick={() => {
+                      setQrCodePreview(null);
+                      form.setValue("qrCode", undefined);
+                    }}
                     className="absolute top-0 right-0 p-1"
                   >
                     <XCircle className="h-4 w-4 text-red-500" />
@@ -455,9 +532,13 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             </div>
           </div>
-          
           <div className="flex justify-end gap-2 mt-8">
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={isPending}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>

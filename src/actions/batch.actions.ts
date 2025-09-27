@@ -27,6 +27,9 @@ export const createBatch = async (formData: FormData) => {
     const data = {
       product: formData.get("product"),
       batchNumber: formData.get("batchNumber"),
+      vendorName: formData.get("vendorName"),
+      qty: Number(formData.get("qty")),
+      price: Number(formData.get("price")),
     };
     
     const validatedData = batchSchema.parse(data);
@@ -46,9 +49,40 @@ export const createBatch = async (formData: FormData) => {
   }
 };
 
+// Delete a batch
+export const deleteBatch = async (batchId: string) => {
+    try {
+        await connectToDatabase();
+        const deletedBatch = await Batch.findByIdAndDelete(batchId);
+        if (!deletedBatch) {
+            return { success: false, message: "Batch not found." };
+        }
+        revalidatePath("/admin/batches");
+        return { success: true, message: "Batch deleted successfully!" };
+    } catch (error) {
+        console.error("Failed to delete batch:", error);
+        return { success: false, message: "Failed to delete batch." };
+    }
+};
+
 // Generate batch number logic
 export const generateBatchNumber = async (productCode: string) => {
   const date = moment().format('DD-MM-YYYY');
   const batchNumber = `${productCode}-${date}`;
   return { success: true, data: batchNumber };
+};
+
+// Get all batches
+export const getBatches = async () => {
+    try {
+        await connectToDatabase();
+        const batches = await Batch.find({}).populate({
+            path: 'product',
+            select: 'productName productCode',
+        });
+        return { success: true, data: JSON.parse(JSON.stringify(batches)) };
+    } catch (error) {
+        console.error("Failed to fetch batches:", error);
+        return { success: false, message: "Failed to fetch batches." };
+    }
 };

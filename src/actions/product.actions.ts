@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { generateProductCode } from "@/lib/generate-prod-code";
 import { connectToDatabase } from "@/lib/db";
-import Product, { IProduct } from "@/lib/models/product";
+import Product, { IProduct, IPopulatedProduct } from "@/lib/models/product";
 import Category, { ICategory } from "@/lib/models/category";
 import Brand, { IBrand } from "@/lib/models/brand";
 import Unit, { IUnit } from "@/lib/models/unit";
@@ -23,19 +23,15 @@ export interface ProductData {
   productCode: string;
   productName: string;
   description?: string;
-  // ✅ REMOVED: unit: string;
   tax?: string;
   purchasePrice: number;
+  sellingPrice: number;
   packingCharges?: number;
   laborCharges?: number;
   electricityCharges?: number;
   others1?: number;
   others2?: number;
   totalPrice?: number;
-  stockQuantity?: number;
-  stockAlertQuantity?: number;
-  // ✅ REMOVED: image?: string;
-  // ✅ REMOVED: qrCode?: string;
 }
 
 export const generateProductCodeForUI = async (categoryId: string) => {
@@ -74,8 +70,6 @@ export const getBrands = async () => {
   }
 };
 
-// ✅ REMOVED: getUnits action is no longer needed
-
 export const getTaxes = async () => {
   try {
     await connectToDatabase();
@@ -90,8 +84,9 @@ export const getTaxes = async () => {
 export const getProducts = async () => {
   try {
     await connectToDatabase();
-    const products = await Product.find({}).lean();
-    return { success: true, data: JSON.parse(JSON.stringify(products)) };
+    // ✅ FIX: Populate the related fields to return the full document data
+    const products = await Product.find({}).populate("category brand tax").lean();
+    return { success: true, data: JSON.parse(JSON.stringify(products)) as IPopulatedProduct[] };
   } catch (error) {
     return { success: false, message: "Failed to fetch products." };
   }
@@ -100,7 +95,6 @@ export const getProducts = async () => {
 export const getProductById = async (id: string) => {
   try {
     await connectToDatabase();
-    // ✅ UPDATED: Removed 'unit', 'image', 'qrCode' from populate
     const product = await Product.findById(id).populate("category brand tax").lean();
     if (!product) {
       return { success: false, message: "Product not found." };

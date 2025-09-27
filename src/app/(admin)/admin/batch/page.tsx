@@ -1,22 +1,21 @@
-// src/app/(admin)/admin/batch/page.tsx
 import { Heading } from "@/components/ui/heading";
 import { Separator } from "@/components/ui/separator";
-import { getProductsForBatch } from "@/actions/batch.actions";
-import { BatchForm } from "@/components/forms/batch-form";
+import { BatchTable } from "@/components/tables/batchTable";
+import { getBatches } from "@/actions/batch.actions";
 
-const BatchPage = async () => {
-  const productsResult = await getProductsForBatch();
-  const products = productsResult.success ? productsResult.data : [];
+const BatchListPage = async () => {
+  const batchesResult = await getBatches();
+  const batches = batchesResult.success ? batchesResult.data : [];
 
   return (
     <div className="flex-col">
       <div className="flex-1 space-y-4 p-8 pt-6">
-        <Heading title="Generate Batch" description="Generate and manage product batch numbers" />
+        <Heading title="Batch List" description="View and manage all created batches" />
         <Separator />
-        <BatchForm products={products} />
+        <BatchTable initialBatches={batches} />
       </div>
     </div>
   );
 };
 
-export default BatchPage;
+export default BatchListPage;
