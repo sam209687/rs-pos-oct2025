@@ -4,9 +4,13 @@ export interface IBatch extends Document {
   _id: string;
   product: Types.ObjectId;
   batchNumber: string;
-  vendorName: string; // ✅ NEW: Vendor name
-  qty: number; // ✅ NEW: Quantity
-  price: number; // ✅ NEW: Price
+  vendorName: string;
+  qty: number;
+  price: number;
+  perUnitPrice?: number;
+  oilCakeProduced?: number;
+  oilExpelled?: number;
+  createdAt: Date;
 }
 
 const BatchSchema: Schema = new Schema(
@@ -22,20 +26,35 @@ const BatchSchema: Schema = new Schema(
       unique: true,
       trim: true,
     },
-    vendorName: { // ✅ NEW: Vendor name schema field
+    vendorName: {
       type: String,
       required: [true, "Vendor name is required."],
       trim: true,
     },
-    qty: { // ✅ NEW: Quantity schema field
+    qty: {
       type: Number,
       required: [true, "Quantity is required."],
       min: [0, "Quantity cannot be negative."],
     },
-    price: { // ✅ NEW: Price schema field
+    price: {
       type: Number,
       required: [true, "Price is required."],
       min: [0, "Price cannot be negative."],
+    },
+    perUnitPrice: {
+      type: Number,
+    },
+    oilCakeProduced: {
+      type: Number,
+      min: [0, "Oil cake produced cannot be negative."],
+    },
+    oilExpelled: {
+      type: Number,
+      min: [0, "Oil expelled cannot be negative."],
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
     },
   },
   { timestamps: true }

@@ -1,4 +1,3 @@
-// src/components/forms/ProductForm.tsx
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
@@ -21,7 +20,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
 import { IProduct } from "@/lib/models/product";
-// import { ICategory } from "@/lib/models/category';
 import { IBrand } from "@/lib/models/brand";
 import { ITax } from "@/lib/models/tax";
 import { ICategory } from "@/lib/models/category";
@@ -35,7 +33,7 @@ type ProductFormValues = z.infer<typeof productSchema>;
 const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const { categories, brands, taxes, fetchFormData, isLoading, currencySymbol } = useProductStore();
+  const { categories, brands, taxes, fetchFormData, isLoading } = useProductStore();
 
   const isEditing = !!initialData;
   const numberInputClass = "w-full [appearance:textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0";
@@ -51,12 +49,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
       tax: initialData?.tax || "", 
       purchasePrice: initialData?.purchasePrice || 0,
       sellingPrice: initialData?.sellingPrice || 0,
-      packingCharges: initialData?.packingCharges || 0,
-      laborCharges: initialData?.laborCharges || 0,
-      electricityCharges: initialData?.electricityCharges || 0,
-      others1: initialData?.others1 || 0,
-      others2: initialData?.others2 || 0,
-      totalPrice: initialData?.totalPrice || 0,
     } as ProductFormValues,
   });
 
@@ -89,28 +81,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
     }
   }, [form.watch("category")]);
 
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if ([
-        "purchasePrice",
-        "sellingPrice",
-        "packingCharges",
-        "laborCharges",
-        "electricityCharges",
-        "others1",
-        "others2"
-      ].includes(name as string)) {
-        const total = (Number(value.sellingPrice) || 0) +
-                      (Number(value.packingCharges) || 0) +
-                      (Number(value.laborCharges) || 0) +
-                      (Number(value.electricityCharges) || 0) +
-                      (Number(value.others1) || 0) +
-                      (Number(value.others2) || 0);
-        form.setValue("totalPrice", total);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+  // ✅ REMOVED: The useEffect for totalPrice calculation is no longer needed.
   
   const onSubmit = async (values: ProductFormValues) => {
     startTransition(async () => {
@@ -283,91 +254,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData }) => {
             name="sellingPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Selling Price</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="totalPrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Total Price</FormLabel>
-                <FormControl>
-                  <Input {...field} disabled={true} className="font-bold text-lg" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* ✅ REMOVED: Stock Quantity fields are no longer needed */}
-        
-        <h2 className="text-lg font-semibold mt-6">Additional Charges</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="packingCharges"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Packing Charges</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="laborCharges"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Labor Charges</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="electricityCharges"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Electricity Charges</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="others1"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Others-1</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="others2"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Others-2</FormLabel>
+                <FormLabel>Selling/Board Price</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} disabled={isPending} className={numberInputClass} />
                 </FormControl>

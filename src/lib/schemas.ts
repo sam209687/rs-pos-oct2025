@@ -1,5 +1,4 @@
 // src/lib/schemas.ts
-
 import { z } from "zod";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -93,31 +92,23 @@ export const productSchema = z.object({
   productCode: z.string().optional(),
   productName: z.string().min(2, "Product name is required."),
   description: z.string().optional(),
-  // ✅ REMOVED: unit: z.string().min(1, "Unit is required."),
   tax: z.string().optional(),
   purchasePrice: z.coerce.number().min(0, "Purchase price must be a non-negative number."),
-  sellingPrice: z.coerce.number().min(0, "Selling price must be a non-negative number."), // ✅ NEW: Selling price field
-  packingCharges: z.coerce.number().optional(),
-  laborCharges: z.coerce.number().optional(),
-  electricityCharges: z.coerce.number().optional(),
-  others1: z.coerce.number().optional(),
-  others2: z.coerce.number().optional(),
+  sellingPrice: z.coerce.number().min(0, "Selling price must be a non-negative number."),
   totalPrice: z.coerce.number().optional(),
-  // ✅ REMOVED: stockQuantity: z.coerce.number().optional(),
-  // ✅ REMOVED: stockAlertQuantity: z.coerce.number().optional(),
-  // ✅ REMOVED: image: z.string().optional(),
-  // ✅ REMOVED: qrCode: z.string().optional(),
 });
 
 
-// Batch Schema
-
+// ✅ FIX: Remove the 'variant' field from the schema
 export const batchSchema = z.object({
   product: z.string().min(1, "Product is required."),
   batchNumber: z.string().min(1, "Batch number is required."),
-  vendorName: z.string().min(2, "Vendor name is required."), // ✅ NEW: Vendor name
-  qty: z.coerce.number().min(1, "Quantity must be at least 1."), // ✅ NEW: Quantity
-  price: z.coerce.number().min(0.01, "Price must be a positive number."), // ✅ NEW: Price
+  vendorName: z.string().min(2, "Vendor name is required."),
+  qty: z.coerce.number().min(1, "Quantity must be at least 1."),
+  price: z.coerce.number().min(0.01, "Price must be a positive number."),
+  perUnitPrice: z.coerce.number().optional(),
+  oilCakeProduced: z.coerce.number().optional(),
+  oilExpelled: z.coerce.number().optional(),
 });
 
 // ✅ CORRECTED: Variants Schema
@@ -129,10 +120,15 @@ export const variantSchema = z.object({
   price: z.coerce.number().min(0, "Price must be a non-negative number."),
   mrp: z.coerce.number().min(0, "MRP must be a non-negative number."),
   discount: z.coerce.number().min(0).max(100).optional(),
-  stockQuantity: z.coerce.number().min(0, "Stock quantity must be a non-negative number."), // ✅ NEW: Stock quantity field
-  stockAlertQuantity: z.coerce.number().min(0, "Stock alert quantity must be a non-negative number."), // ✅ NEW: Stock alert quantity field
+  stockQuantity: z.coerce.number().min(0, "Stock quantity must be a non-negative number."),
+  stockAlertQuantity: z.coerce.number().min(0, "Stock alert quantity must be a non-negative number."),
   image: z.any().optional(),
   qrCode: z.any().optional(),
+  packingCharges: z.coerce.number().optional(),
+  laborCharges: z.coerce.number().optional(),
+  electricityCharges: z.coerce.number().optional(),
+  others1: z.coerce.number().optional(),
+  others2: z.coerce.number().optional(),
 });
 
 // oec.schema.ts
@@ -152,5 +148,10 @@ export const customerSchema = z.object({
   address: z.string().optional(),
 });
 
+// Messsage Shema
 
-// Admin Panel Schema
+export const messageSchema = z.object({
+  sender: z.string().min(1, "Sender ID is required."),
+  recipient: z.string().min(1, "Recipient ID is required."),
+  content: z.string().min(1, "Message content cannot be empty."),
+});

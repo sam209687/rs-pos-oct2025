@@ -27,37 +27,32 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (status === "loading") return; // Do nothing while loading
+    if (status === "loading") return;
 
+    // ✅ FIX: Add the signup page to the list of public paths
     const publicPaths = [
       "/auth",
       "/auth/forgot-password",
       "/auth/reset-password",
+      "/auth/signup",
     ];
     const isPublicPath = publicPaths.includes(pathname);
 
     if (session) {
-      // User is logged in
       if (isPublicPath) {
-        // If user is on a public page, redirect to dashboard based on role
         if (session.user.role === "admin") {
           router.push("/admin/dashboard");
         } else if (session.user.role === "cashier") {
           router.push("/cashier/dashboard");
         }
       }
-      // If logged in and not on a public path, allow access (handled by middleware for protection)
     } else {
-      // User is not logged in
       if (!isPublicPath) {
-        // If trying to access a protected page, redirect to login
         router.push("/auth");
       }
     }
   }, [session, status, router, pathname]);
 
-  // Render children only if session status is not loading or if it's a public path
-  // This prevents flickering or premature redirects
   if (status === "loading" && !pathname.startsWith("/auth")) {
     return <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <SkeltonLoader />
@@ -76,17 +71,16 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning // Add this prop here
+        suppressHydrationWarning
       >
         <ThemeProvider
-          attribute="class" // Very important for Tailwind CSS
+          attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
           <SessionProvider >
             {" "}
-            {/* Wrap your app with SessionProvider */}
             <AuthGuard>{children}</AuthGuard>
             <Toaster position="bottom-right" richColors />
           </SessionProvider>

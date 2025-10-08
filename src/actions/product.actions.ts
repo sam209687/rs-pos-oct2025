@@ -26,11 +26,6 @@ export interface ProductData {
   tax?: string;
   purchasePrice: number;
   sellingPrice: number;
-  packingCharges?: number;
-  laborCharges?: number;
-  electricityCharges?: number;
-  others1?: number;
-  others2?: number;
   totalPrice?: number;
 }
 
@@ -84,7 +79,6 @@ export const getTaxes = async () => {
 export const getProducts = async () => {
   try {
     await connectToDatabase();
-    // ✅ FIX: Populate the related fields to return the full document data
     const products = await Product.find({}).populate("category brand tax").lean();
     return { success: true, data: JSON.parse(JSON.stringify(products)) as IPopulatedProduct[] };
   } catch (error) {
@@ -110,6 +104,10 @@ export const createProduct = async (data: ProductData) => {
   try {
     const validatedData = productSchema.parse(data);
     await connectToDatabase();
+    
+    // ✅ FIX: Calculate totalPrice before saving
+    validatedData.totalPrice = validatedData.sellingPrice;
+    
     const newProduct = new Product(validatedData);
     await newProduct.save();
     revalidatePath("/admin/products");
@@ -127,6 +125,10 @@ export const updateProduct = async (id: string, data: ProductData) => {
   try {
     const validatedData = productSchema.parse(data);
     await connectToDatabase();
+
+    // ✅ FIX: Calculate totalPrice before updating
+    validatedData.totalPrice = validatedData.sellingPrice;
+    
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       validatedData,

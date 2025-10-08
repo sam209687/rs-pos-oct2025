@@ -1,23 +1,27 @@
-// src/app/(admin)/admin/variants/edit/[variantId]/page.tsx
-import { getVariantById } from "@/actions/variant.actions";
+// src/app/(admin)/admin/variants/add-variant/page.tsx
+import { Heading } from "@/components/ui/heading";
+import { Separator } from "@/components/ui/separator";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
+// ✅ FIX: Change the named import back to a default import
 import VariantForm from "@/components/forms/variant-form";
-// import { VariantForm } from "@/components/forms/variant-form";
-import { notFound } from "next/navigation";
 
-export default async function VariantEditPage({ params: { variantId } }: { params: { variantId: string } }) {
-  const variantResult = await getVariantById(variantId);
+const Loading = () => (
+  <div className="flex justify-center items-center h-screen">
+    <Loader2 className="h-8 w-8 animate-spin" />
+  </div>
+);
 
-  if (!variantResult.success) {
-    console.error(variantResult.message);
-    notFound();
-  }
-
+export default function AddVariantPage() {
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Update Variant</h2>
+    <>
+      <div className="flex items-center justify-between">
+        <Heading title="Add Variant" description="Add a new product variant." />
       </div>
-      <VariantForm initialData={variantResult.data} />
-    </div>
+      <Separator />
+      <Suspense fallback={<Loading />}>
+        <VariantForm />
+      </Suspense>
+    </>
   );
-};
+}

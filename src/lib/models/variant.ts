@@ -1,21 +1,29 @@
 // src/lib/models/variant.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { IPopulatedProduct, IProduct } from './product';
+import { IProduct, IPopulatedProduct } from './product';
 import { IUnit } from './unit';
+import './product';
+import './unit';
 
 export interface IVariant extends Document {
   _id: string;
-  product: Types.ObjectId | IProduct;
+  product: Types.ObjectId;
   variantVolume: number;
-  unit: Types.ObjectId | IUnit;
+  unit: Types.ObjectId;
   variantColor?: string;
   price: number;
   mrp: number;
-  discount: number;
-  stockQuantity: number; // ✅ NEW: Stock quantity field
-  stockAlertQuantity: number; // ✅ NEW: Stock alert quantity field
-  image: string;
+  discount?: number;
+  stockQuantity: number;
+  stockAlertQuantity: number;
+  image?: string;
   qrCode?: string;
+  packingCharges: number; // ✅ NEW: Packing charges field
+  laborCharges: number; // ✅ NEW: Labor charges field
+  electricityCharges: number; // ✅ NEW: Electricity charges field
+  others1: number; // ✅ NEW: Other 1 charges field
+  others2: number; // ✅ NEW: Other 2 charges field
+  createdAt: Date;
 }
 
 export interface IPopulatedVariant extends Omit<IVariant, 'product' | 'unit'> {
@@ -28,24 +36,23 @@ const VariantSchema: Schema = new Schema(
     product: {
       type: Types.ObjectId,
       ref: 'Product',
-      required: [true, "Product is required."],
+      required: true,
     },
     variantVolume: {
       type: Number,
-      required: [true, "Variant volume is required."],
+      required: true,
     },
     unit: {
       type: Types.ObjectId,
       ref: 'Unit',
-      required: [true, "Unit is required."],
+      required: true,
     },
     variantColor: {
       type: String,
-      trim: true,
     },
     price: {
       type: Number,
-      required: [true, "Price is required."],
+      required: true,
     },
     mrp: {
       type: Number,
@@ -53,29 +60,30 @@ const VariantSchema: Schema = new Schema(
     },
     discount: {
       type: Number,
-      required: true,
-      default: 0
     },
-    stockQuantity: { // ✅ NEW: Stock quantity schema field
+    stockQuantity: {
       type: Number,
       required: true,
-      default: 0
     },
-    stockAlertQuantity: { // ✅ NEW: Stock alert quantity schema field
+    stockAlertQuantity: {
       type: Number,
       required: true,
-      default: 0
     },
     image: {
       type: String,
-      trim: true,
     },
     qrCode: {
       type: String,
-      trim: true,
-    }
+    },
+    packingCharges: { type: Number, default: 0 }, // ✅ NEW: Packing charges
+    laborCharges: { type: Number, default: 0 }, // ✅ NEW: Labor charges
+    electricityCharges: { type: Number, default: 0 }, // ✅ NEW: Electricity charges
+    others1: { type: Number, default: 0 }, // ✅ NEW: Other 1 charges
+    others2: { type: Number, default: 0 }, // ✅ NEW: Other 2 charges
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 const Variant = mongoose.models.Variant || mongoose.model<IVariant>('Variant', VariantSchema);

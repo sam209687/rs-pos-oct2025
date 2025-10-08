@@ -9,11 +9,12 @@ import { batchSchema } from '@/lib/schemas';
 import { z } from 'zod';
 import moment from 'moment';
 
-// Helper function to get product data for the dropdown
+// ✅ FIX: Update getProductsForBatch to populate the 'category' field
 export const getProductsForBatch = async () => {
   try {
     await connectToDatabase();
-    const products = await Product.find({}, 'productName productCode').sort({ productName: 1 });
+    // Populate the category field to make its data available on the client
+    const products = await Product.find({}).populate('category').sort({ productName: 1 }).lean();
     return { success: true, data: JSON.parse(JSON.stringify(products)) };
   } catch (error) {
     console.error("Failed to fetch products for batch:", error);
@@ -30,6 +31,9 @@ export const createBatch = async (formData: FormData) => {
       vendorName: formData.get("vendorName"),
       qty: Number(formData.get("qty")),
       price: Number(formData.get("price")),
+      perUnitPrice: Number(formData.get("perUnitPrice")),
+      oilCakeProduced: formData.get("oilCakeProduced") ? Number(formData.get("oilCakeProduced")) : undefined,
+      oilExpelled: formData.get("oilExpelled") ? Number(formData.get("oilExpelled")) : undefined,
     };
     
     const validatedData = batchSchema.parse(data);
@@ -46,6 +50,45 @@ export const createBatch = async (formData: FormData) => {
     }
     console.error("Failed to create batch:", error);
     return { success: false, message: "Failed to create batch." };
+  }
+};
+
+// Update an existing batch
+export const updateBatch = async (id: string, formData: FormData) => {
+  try {
+    const data = {
+      product: formData.get("product"),
+      batchNumber: formData.get("batchNumber"),
+      vendorName: formData.get("vendorName"),
+      qty: Number(formData.get("qty")),
+      price: Number(formData.get("price")),
+      perUnitPrice: Number(formData.get("perUnitPrice")),
+      oilCakeProduced: formData.get("oilCakeProduced") ? Number(formData.get("oilCakeProduced")) : undefined,
+      oilExpelled: formData.get("oilExpelled") ? Number(formData.get("oilExpelled")) : undefined,
+    };
+
+    const validatedData = batchSchema.parse(data);
+    await connectToDatabase();
+    
+    const updatedBatch = await Batch.findByIdAndUpdate(id, validatedData, { new: true }).populate({
+      path: 'product',
+      select: 'productName productCode sellingPrice',
+    }).lean();
+    
+    if (!updatedBatch) {
+      return { success: false, message: "Batch not found." };
+    }
+
+    revalidatePath("/admin/batch");
+    revalidatePath(`/admin/batch/edit/${id}`);
+    return { success: true, data: JSON.parse(JSON.stringify(updatedBatch)), message: "Batch updated successfully!" };
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, message: error.errors[0].message };
+    }
+    console.error("Failed to update batch:", error);
+    return { success: false, message: "Failed to update batch." };
   }
 };
 
@@ -67,8 +110,9 @@ export const deleteBatch = async (batchId: string) => {
 
 // Generate batch number logic
 export const generateBatchNumber = async (productCode: string) => {
-  const date = moment().format('DD-MM-YYYY');
-  const batchNumber = `${productCode}-${date}`;
+  const date = moment().format('DDMMYYYY');
+  const timestamp = moment().format('x');
+  const batchNumber = `${productCode}-${date}-${timestamp}`;
   return { success: true, data: batchNumber };
 };
 
@@ -78,11 +122,29 @@ export const getBatches = async () => {
         await connectToDatabase();
         const batches = await Batch.find({}).populate({
             path: 'product',
-            select: 'productName productCode',
-        });
+            select: 'productName productCode sellingPrice', 
+        }).lean();
         return { success: true, data: JSON.parse(JSON.stringify(batches)) };
     } catch (error) {
         console.error("Failed to fetch batches:", error);
         return { success: false, message: "Failed to fetch batches." };
     }
+};
+
+// Get a single batch by ID
+export const getBatchById = async (id: string) => {
+  try {
+    await connectToDatabase();
+    const batch = await Batch.findById(id).populate({
+      path: 'product',
+      select: 'productName productCode sellingPrice',
+    }).lean();
+    if (!batch) {
+      return { success: false, message: "Batch not found." };
+    }
+    return { success: true, data: JSON.parse(JSON.stringify(batch)) };
+  } catch (error) {
+    console.error("Failed to fetch batch by ID:", error);
+    return { success: false, message: "Failed to fetch batch." };
+  }
 };

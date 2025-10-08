@@ -1,5 +1,5 @@
 // src/app/(auth)/auth/_components/LoginForm.tsx
-"use client"; // Make sure this directive is at the very top
+"use client"; 
 
 import * as z from "zod";
 import { useForm } from "react-hook-form";
@@ -90,12 +90,18 @@ export function LoginForm() {
         <Button type="submit" className="w-full">
           Sign In
         </Button>
-        <div className="text-center">
+        <div className="text-center space-y-2">
           <Link
             href="/auth/forgot-password"
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm text-blue-600 hover:underline block"
           >
             Forgot Password?
+          </Link>
+          <Link
+            href="/auth/signup"
+            className="text-sm text-blue-600 hover:underline block"
+          >
+            Not an user? Signup
           </Link>
         </div>
       </form>

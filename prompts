@@ -1,262 +1,327 @@
-write Prompt for under mention instructions which are has to be implement for my NextJs 15 and above framework
+here in the batch table alter the UI as required
 
 
 
-1. Framework NextJS 15 and above
+Batch Number
 
-2. Tailwind CSS
+Vendor Name
 
-3. Shadcn UI
+Product Name (Add this table heading)
 
-4. Zod Validation for form fields with displaying error message under each field with their respective errors
+Quantity
 
-5. Use Zustland for state management and for data fetching instead of useEffect
+Price
 
-6. Make each component or functions reusable in this entire project
+Actions (there Edit and delete add invoice icon
 
-7. Every button should be disabled and show spinner after it si clicked and show please wait...
+this icon will generate a details report ( uploaded a screen shot)  of sales and it will only generate the details if the oil Expelled (in Ltrs) of batcg db is not blank as tabulated below and it should have view and print button
 
-8.Use Debounce for serching data in the fronted.
+Date (On which the batch number generated) 
 
-9. we will use mobgodb GUI for offline purpose we will save the data locally in MongoDB locally 
+Vendor Name
 
-10. this project considered ad offline project
+Batch Number-(In extra Bold font)
 
-11. All the  UI should have to meet the modern web development UI with eye catching and  en ganging design
 
 
+heading- Detail Summary of this Batch.
 
-Now write the prompt considering the above mentioned all the points
 
-create a reusable component for brand this component should have following pages as mention below
 
+Create a table with border 
 
 
-1. brand page it should show a table with following headings S/No, Name, Image , Actions (with Edit and Delete Icons with their White and red Red icon colour) add Add Brand button with state loading enable and disabled in the top of the form give a heading and para related to this form
 
+Add these data in the table
 
+Qty Purchased -  Qty of Batch 
 
-2. Add brand page it should use zod validated form with following field
+Price - Price field of batch 
 
-Name and Image field
+Oil Expelled - (In Ltr) - Oil Expelled of batch 
 
-this image should be saved locally to the public folder and i have already that function as mentioned below create this in src/lib/imageUpload.ts
+Seeds consumed to produce per litre oil - calculated field - Qty Purchased / Oil expelled
 
+Purchase Price per kg - calculated field -  Price / Qty Purchased 
 
+oil price / ltr -  calculated field -  Price / Qty Purchased 
 
-// src/lib/imageUpload.ts
+Selling Price/ ltr - Auto populated filed - fetch this field data from product db selling price / 2 eg: if that data is 240 then divide 240 / 2 - 120
 
-import fs from 'fs/promises';
 
-import path from 'path';
 
+Price of (show the data of Seeds consumed to produce per liter oil eg: if that details is  2.27 then show like this Price of 2.2 kg) - calculated field  - Selling Price/ ltr *  Seeds consumed to produce per liter
 
 
-/**
 
- * Uploads a file to a specified public directory.
+Final Selling Price - calculated field - get the Additional Charges all fields data from products db eg: add the packing charge + labor charge + Electricity charge + other-1 + others-2 sum all these fields and add this  with Price of field 
 
- * @param file The file object (from FormData, typically a Next.js File type).
 
- * @param subfolder The subfolder within public/image/ (e.g., 'brand', 'product').
 
- * @returns The public URL path of the uploaded image.
 
- * @throws Error if file operations fail or directory cannot be created.
 
- */
+"use client";
 
-export async function uploadImage(file: File, subfolder: string): Promise<string> {
 
-  if (!file) {
 
-    throw new Error('No file provided for upload.');
+import Link from "next/link";
 
-  }
+import { useEffect, useState, useTransition } from "react";
 
+import { IBatch } from "@/lib/models/batch";
 
+import { useBatchStore } from "@/store/batch.store";
 
-  const uploadDir = path.join(process.cwd(), 'public', 'image', subfolder);
+import { useDebounce } from "@/hooks/use-debounce";
 
+import { deleteBatch } from "@/actions/batch.actions";
 
 
-  try {
 
-    // Ensure the upload directory exists
+import { Button } from "@/components/ui/button";
 
-    await fs.mkdir(uploadDir, { recursive: true });
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-  } catch (error) {
+import { Input } from "@/components/ui/input";
 
-    console.error(`Error creating upload directory ${uploadDir}:`, error);
+import { Loader2, Pencil, Trash2, Plus } from "lucide-react";
 
-    throw new Error(`Failed to create upload directory.`);
 
-  }
 
+interface BatchTableProps {
 
-
-  // Sanitize filename to prevent path traversal and ensure uniqueness
-
-  const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-
-  const uniqueFilename = `${Date.now()}-${sanitizedFilename}`;
-
-  const filePath = path.join(uploadDir, uniqueFilename);
-
-
-
-  try {
-
-    // Convert File to Buffer and write to disk
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    await fs.writeFile(filePath, buffer);
-
-
-
-    // Return the public URL path
-
-    return `/image/${subfolder}/${uniqueFilename}`;
-
-  } catch (error) {
-
-    console.error(`Error writing file ${filePath}:`, error);
-
-    throw new Error(`Failed to upload image.`);
-
-  }
+  initialBatches: IBatch[];
 
 }
 
 
 
-/**
+export function BatchTable({ initialBatches }: BatchTableProps) {
 
- * Deletes an image from the public directory.
+  const { batches, setBatches } = useBatchStore();
 
- * @param imageUrl The public URL path of the image (e.g., /image/brand/123-image.png).
+  const [isDeleting, startDeleteTransition] = useTransition();
 
- * @returns True if deletion was successful, false if file not found, throws on other errors.
-
- */
-
-export async function deleteImage(imageUrl: string): Promise<boolean> {
-
-  if (!imageUrl || !imageUrl.startsWith('/image/')) {
-
-    console.warn(`Invalid image URL for deletion: ${imageUrl}`);
-
-    return false; // Not a managed image URL
-
-  }
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
 
 
-  const relativePath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl; // Remove leading slash if present
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const fullPath = path.join(process.cwd(), 'public', relativePath);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const [isPending, startTransition] = useTransition();
 
 
 
-  try {
+  useEffect(() => {
 
-    await fs.unlink(fullPath);
+    setBatches(initialBatches);
 
-    console.log(`Successfully deleted image: ${fullPath}`);
+  }, [initialBatches, setBatches]);
 
-    return true;
 
-  } catch (error: any) {
 
-    if (error.code === 'ENOENT') {
+  const filteredBatches = batches.filter((batch: IBatch) =>
 
-      console.warn(`Attempted to delete non-existent file: ${fullPath}`);
+    batch.batchNumber.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
 
-      return false; // File not found, consider it deleted
+    batch.vendorName.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
 
-    }
+  );
 
-    console.error(`Error deleting image ${fullPath}:`, error);
 
-    throw new Error(`Failed to delete image: ${error.message}`);
 
-  }
+  const handleDelete = (batchId: string) => {
+
+    if (window.confirm("Are you sure you want to delete this batch?")) {
+
+      setDeletingId(batchId);
+
+      startDeleteTransition(() => {
+
+        deleteBatch(batchId).finally(() => setDeletingId(null));
+
+      });
+
+    }
+
+  };
+
+
+
+  const handleAddBatchClick = () => {
+
+    startTransition(() => {
+
+      // This will handle the page transition
+
+    });
+
+  };
+
+
+
+  return (
+
+    <div className="space-y-4">
+
+        <div className="flex items-center justify-between">
+
+            <Input
+
+                placeholder="Search by batch number or vendor name..."
+
+                value={searchTerm}
+
+                onChange={(e) => setSearchTerm(e.target.value)}
+
+                className="max-w-sm"
+
+            />
+
+            <Link href="/admin/batch/add-batch" onClick={handleAddBatchClick}>
+
+                <Button disabled={isPending}>
+
+                    {isPending ? (
+
+                        <>
+
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+
+                            Loading...
+
+                        </>
+
+                    ) : (
+
+                        <>
+
+                            <Plus className="h-4 w-4 mr-2" />
+
+                            Add Batch
+
+                        </>
+
+                    )}
+
+                </Button>
+
+            </Link>
+
+        </div>
+
+        <div className="rounded-md border">
+
+        <Table>
+
+            <TableHeader>
+
+            <TableRow>
+
+                <TableHead className="w-[80px]">S/No</TableHead>
+
+                <TableHead>Batch Number</TableHead>
+
+                <TableHead>Vendor Name</TableHead>
+
+                <TableHead>Quantity</TableHead>
+
+                <TableHead>Price</TableHead>
+
+                <TableHead className="text-right w-[120px]">Actions</TableHead>
+
+            </TableRow>
+
+            </TableHeader>
+
+            <TableBody>
+
+            {filteredBatches.length > 0 ? (
+
+                filteredBatches.map((batch: IBatch, index: number) => (
+
+                <TableRow key={batch._id.toString()}>
+
+                    <TableCell>{index + 1}</TableCell>
+
+                    <TableCell className="font-medium">{batch.batchNumber}</TableCell>
+
+                    <TableCell>{batch.vendorName}</TableCell>
+
+                    <TableCell>{batch.qty}</TableCell>
+
+                    <TableCell>₹ {(batch.price ?? 0).toFixed(2)}</TableCell>
+
+                    <TableCell className="text-right">
+
+                    <div className="flex items-center justify-end gap-2">
+
+                        <Link href={`/admin/batch/edit/${batch._id}`}>
+
+                           <Button variant="outline" size="icon">
+
+                                <Pencil className="h-4 w-4" />
+
+                           </Button>
+
+                        </Link>
+
+                        <Button
+
+                        variant="destructive"
+
+                        size="icon"
+
+                        onClick={() => handleDelete(batch._id.toString())}
+
+                        disabled={isDeleting && deletingId === batch._id.toString()}
+
+                        >
+
+                        {isDeleting && deletingId === batch._id.toString() ? (
+
+                            <Loader2 className="h-4 w-4 animate-spin" />
+
+                        ) : (
+
+                            <Trash2 className="h-4 w-4" />
+
+                        )}
+
+                        </Button>
+
+                    </div>
+
+                    </TableCell>
+
+                </TableRow>
+
+                ))
+
+            ) : (
+
+                <TableRow>
+
+                <TableCell colSpan={6} className="h-24 text-center">
+
+                    No batches found.
+
+                </TableCell>
+
+                </TableRow>
+
+            )}
+
+            </TableBody>
+
+        </Table>
+
+        </div>
+
+    </div>
+
+  );
 
 }
-
-
-and this is db connection code of this project
-
-// src/lib/db.ts
-import mongoose from "mongoose";
-
-let cachedDb: typeof mongoose | null = null;
-
-export async function connectToDatabase() {
-  if (cachedDb) {
-    return cachedDb;
-  }
-
-  try {
-    const db = await mongoose.connect(process.env.MONGODB_URI as string);
-    cachedDb = db;
-    console.log("Connected to MongoDB.");
-    return db;
-  } catch (error) {
-    console.error("Error connecting to MongoDB: ", error);
-    throw new Error("Failed to connect to database.");
-  }
-}
-
-
-
-
-
-so create this into the src/component/forms folder
-
-
-
-now create the pages to render the same in src/app/(admin)/admin/brand/page.tsx
-
-(this page will render the table Ui from the stc/components/table and fill all the required props to shown the data from DB we have crated the mongo db database connection file
-
-
-
- create the pages to render the same in src/app/(admin)/admin/brand/add-brand/page.tsx
-
-the will create the form with thoir respective fields as mentioned above in the src/components/forms it will get the ui and fill the required props 
-
-
-
-so we have created the UI for table and forms in src/components/forms and table now we can reuse the both for all of out future components like categories, units, products etc
-
-
-
-
-
-Now write the prompt considering all the mentioned points
-
-
-
-follow the same steps to create the variants components it should have following fields
-
-it should be related with products db collection means relational db
-
-Product Name (fetch the name of product from produvt DB in the dropbox)
-
-Product Code (Auto generate field shows the product code of that product in the text field)
-
-Variant volume (number field without increase and decrease button minimum 0)
-
-variant color (Text box to input the color)
-
-unit (this dropbox will show the units from db)
-
-Price (Show the selling price of that product from product DB)
-
-
-
-
-

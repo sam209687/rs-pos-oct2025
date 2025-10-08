@@ -16,18 +16,10 @@ export interface IProduct extends Document {
   productCode: string;
   productName: string;
   description?: string;
-  // ✅ REMOVED: unit: Types.ObjectId;
   tax: Types.ObjectId;
   purchasePrice: number;
-  sellingPrice: number; // ✅ NEW: Selling price field
-  packingCharges: number;
-  laborCharges: number;
-  electricityCharges: number;
-  others1: number;
-  others2: number;
+  sellingPrice: number;
   totalPrice: number;
-  // ✅ REMOVED: stockQuantity: number;
-  // ✅ REMOVED: stockAlertQuantity: number;
   createdAt: Date;
 }
 
@@ -43,18 +35,10 @@ const ProductSchema = new Schema({
   productCode: { type: String, required: true, unique: true },
   productName: { type: String, required: true },
   description: { type: String },
-  // ✅ REMOVED: unit: { type: Types.ObjectId, ref: 'Unit', required: true },
   tax: { type: Types.ObjectId, ref: 'Tax', required: true },
   purchasePrice: { type: Number, required: true },
-  sellingPrice: { type: Number, required: true }, // ✅ NEW: Selling price schema field
-  packingCharges: { type: Number, default: 0 },
-  laborCharges: { type: Number, default: 0 },
-  electricityCharges: { type: Number, default: 0 },
-  others1: { type: Number, default: 0 },
-  others2: { type: Number, default: 0 },
+  sellingPrice: { type: Number, required: true },
   totalPrice: { type: Number, required: true },
-  // ✅ REMOVED: stockQuantity: { type: Number, required: true },
-  // ✅ REMOVED: stockAlertQuantity: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now },
 });
 

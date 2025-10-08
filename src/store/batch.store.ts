@@ -1,30 +1,53 @@
 import { create } from 'zustand';
 import { getProductsForBatch, deleteBatch as deleteBatchAction, getBatches } from '@/actions/batch.actions';
 import { IBatch } from '@/lib/models/batch';
+import { IPopulatedProduct } from '@/lib/models/product';
+import { IPopulatedVariant } from '@/lib/models/variant';
+import { ICategory } from '@/lib/models/category';
+import { getCategories } from '@/actions/product.actions';
 import { toast } from 'sonner';
 
 interface IProduct {
   _id: string;
   productName: string;
   productCode: string;
+  category: ICategory; 
+}
+
+// ✅ FIX: Define a clean, non-extending populated batch interface
+export interface IPopulatedBatch {
+  _id: string;
+  product: IPopulatedProduct;
+  batchNumber: string;
+  vendorName: string;
+  qty: number;
+  price: number;
+  perUnitPrice?: number;
+  oilCakeProduced?: number;
+  oilExpelled?: number;
+  createdAt: Date;
 }
 
 interface BatchStoreState {
   products: IProduct[];
-  batches: IBatch[]; // ✅ FIX: Add batches array to the state
+  batches: IPopulatedBatch[];
+  categories: ICategory[]; 
   isLoading: boolean;
-  isDeleting: boolean; // Add isDeleting state
+  isDeleting: boolean; 
   selectedProductCode: string | null;
   fetchProducts: () => Promise<void>;
-  fetchBatches: () => Promise<void>; // Add fetchBatches action
-  setBatches: (batches: IBatch[]) => void; // ✅ FIX: Add setBatches action
-  deleteBatch: (batchId: string) => Promise<void>; // Add deleteBatch action
+  fetchBatches: () => Promise<void>; 
+  fetchCategories: () => Promise<void>;
+  setBatches: (batches: IPopulatedBatch[]) => void;
+  updateBatch: (updatedBatch: IPopulatedBatch) => void;
+  deleteBatch: (batchId: string) => Promise<void>; 
   setSelectedProductCode: (code: string | null) => void;
 }
 
 export const useBatchStore = create<BatchStoreState>((set) => ({
   products: [],
-  batches: [], // ✅ FIX: Initialize batches array
+  batches: [],
+  categories: [],
   isLoading: false,
   isDeleting: false,
   selectedProductCode: null,
@@ -51,7 +74,7 @@ export const useBatchStore = create<BatchStoreState>((set) => ({
     try {
       const result = await getBatches();
       if (result.success) {
-        set({ batches: result.data, isLoading: false });
+        set({ batches: result.data as IPopulatedBatch[], isLoading: false });
       } else {
         toast.error(result.message);
         set({ isLoading: false, batches: [] });
@@ -63,7 +86,28 @@ export const useBatchStore = create<BatchStoreState>((set) => ({
     }
   },
 
-  setBatches: (batches) => set({ batches }), // ✅ FIX: Add setBatches implementation
+  fetchCategories: async () => {
+    try {
+      const result = await getCategories();
+      if (result.success) {
+        set({ categories: result.data });
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    }
+  },
+
+  setBatches: (batches) => set({ batches }),
+
+  updateBatch: (updatedBatch) => {
+    set((state) => ({
+      batches: state.batches.map((b) =>
+        b._id === updatedBatch._id ? updatedBatch : b
+      ),
+    }));
+  },
 
   deleteBatch: async (batchId) => {
     set({ isDeleting: true });

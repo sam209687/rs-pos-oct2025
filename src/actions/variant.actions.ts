@@ -6,7 +6,6 @@ import Variant from "@/lib/models/variant";
 import { variantSchema } from "@/lib/schemas";
 import { z } from "zod";
 
-// ✅ CORRECTED: Updated VariantData interface
 export interface VariantData {
   product: string;
   variantVolume: number;
@@ -15,17 +14,21 @@ export interface VariantData {
   price: number;
   mrp: number;
   discount?: number;
-  stockQuantity: number; // ✅ NEW: Stock quantity field
-  stockAlertQuantity: number; // ✅ NEW: Stock alert quantity field
+  stockQuantity: number;
+  stockAlertQuantity: number;
   image?: string;
   qrCode?: string;
+  packingCharges?: number;
+  laborCharges?: number;
+  electricityCharges?: number;
+  others1?: number;
+  others2?: number;
 }
 
 // Fetch all variants
 export const getVariants = async () => {
   try {
     await connectToDatabase();
-    // ✅ FIX: Populate only product and unit fields
     const variants = await Variant.find({}).populate("product unit").lean();
     return { success: true, data: JSON.parse(JSON.stringify(variants)) };
   } catch (error) {
@@ -38,7 +41,6 @@ export const getVariants = async () => {
 export const getVariantById = async (id: string) => {
   try {
     await connectToDatabase();
-    // ✅ FIX: Populate only product and unit fields
     const variant = await Variant.findById(id).populate("product unit").lean();
     if (!variant) {
       return { success: false, message: "Variant not found." };
@@ -105,5 +107,18 @@ export const deleteVariant = async (id: string) => {
   } catch (error) {
     console.error("Failed to delete variant:", error);
     return { success: false, message: "Failed to delete variant." };
+  }
+};
+
+// ✅ NEW: Fetch all variants for a given product ID
+export const getVariantsByProductId = async (productId: string) => {
+  try {
+    await connectToDatabase();
+    // Fetch variants and populate the unit to get its name
+    const variants = await Variant.find({ product: productId }).populate('unit').lean();
+    return { success: true, data: JSON.parse(JSON.stringify(variants)) };
+  } catch (error) {
+    console.error("Failed to fetch variants by product ID:", error);
+    return { success: false, message: "Failed to fetch variants." };
   }
 };

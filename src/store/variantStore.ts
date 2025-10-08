@@ -17,11 +17,13 @@ interface IVariantState {
   productDetails: {
     productCode: string;
     totalPrice: number;
+    purchasePrice: number;
+    sellingPrice: number; // ✅ FIX: Add sellingPrice to the state
   };
   setVariants: (variants: IPopulatedVariant[]) => void;
   setProducts: (products: IPopulatedProduct[]) => void;
   setUnits: (units: IUnit[]) => void;
-  setProductDetails: (details: { productCode: string; totalPrice: number; }) => void;
+  setProductDetails: (details: { productCode: string; totalPrice: number; purchasePrice: number; sellingPrice: number; }) => void; // ✅ FIX: Update setProductDetails
   fetchVariants: () => Promise<void>;
   fetchFormData: () => Promise<void>;
   fetchProductDetails: (id: string) => Promise<void>;
@@ -38,6 +40,8 @@ export const useVariantStore = create<IVariantState>((set) => ({
   productDetails: {
     productCode: "",
     totalPrice: 0,
+    purchasePrice: 0,
+    sellingPrice: 0, // ✅ FIX: Initialize sellingPrice
   },
   
   setVariants: (variants) => set({ variants }),
@@ -85,14 +89,16 @@ export const useVariantStore = create<IVariantState>((set) => ({
           productDetails: {
             productCode: productResult.data.productCode || "",
             totalPrice: productResult.data.totalPrice || 0,
+            purchasePrice: productResult.data.purchasePrice || 0,
+            sellingPrice: productResult.data.sellingPrice || 0, // ✅ FIX: Set the sellingPrice
           }
         });
       } else {
-        set({ productDetails: { productCode: "", totalPrice: 0 } });
+        set({ productDetails: { productCode: "", totalPrice: 0, purchasePrice: 0, sellingPrice: 0 } });
       }
     } catch (error) {
       console.error('Failed to fetch product details in store:', error);
-      set({ productDetails: { productCode: "", totalPrice: 0 } });
+      set({ productDetails: { productCode: "", totalPrice: 0, purchasePrice: 0, sellingPrice: 0 } });
     }
   },
 

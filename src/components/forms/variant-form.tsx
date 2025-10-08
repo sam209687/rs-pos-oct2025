@@ -59,14 +59,7 @@ const numberInputStyles = `
 const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const {
-    products,
-    units,
-    fetchFormData,
-    fetchProductDetails,
-    productDetails,
-    isLoading,
-  } = useVariantStore();
+  const { products, units, fetchFormData, fetchProductDetails, productDetails, isLoading } = useVariantStore();
 
   const [imagePreview, setImagePreview] = useState<string | null>(
     initialData?.image || null
@@ -92,6 +85,11 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       stockAlertQuantity: initialData?.stockAlertQuantity || 0,
       image: initialData?.image || undefined,
       qrCode: initialData?.qrCode || undefined,
+      packingCharges: initialData?.packingCharges || 0, 
+      laborCharges: initialData?.laborCharges || 0, 
+      electricityCharges: initialData?.electricityCharges || 0, 
+      others1: initialData?.others1 || 0, 
+      others2: initialData?.others2 || 0, 
     } as VariantFormValues,
   });
 
@@ -104,7 +102,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
     if (selectedProductId) {
       fetchProductDetails(selectedProductId);
     } else {
-      useVariantStore.setState({ productDetails: { productCode: "", totalPrice: 0 } });
+      useVariantStore.setState({ productDetails: { productCode: "", totalPrice: 0, purchasePrice: 0, sellingPrice: 0 } });
     }
   }, [form.watch("product"), fetchProductDetails]);
 
@@ -115,6 +113,27 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
+      // ✅ FIX: The price of variant is now a calculated field
+      const fieldsToWatch = [
+        "product",
+        "packingCharges",
+        "laborCharges",
+        "electricityCharges",
+        "others1",
+        "others2"
+      ];
+      
+      if (fieldsToWatch.includes(name as string)) {
+        const basePrice = (productDetails.sellingPrice || 0);
+        const newPrice = basePrice + 
+                         (Number(value.packingCharges) || 0) + 
+                         (Number(value.laborCharges) || 0) + 
+                         (Number(value.electricityCharges) || 0) +
+                         (Number(value.others1) || 0) +
+                         (Number(value.others2) || 0);
+        form.setValue("price", newPrice);
+      }
+
       if (name === "price" || name === "mrp") {
         const price = Number(value.price);
         const mrp = Number(value.mrp);
@@ -123,7 +142,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       }
     });
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [form, productDetails]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -190,12 +209,9 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       }
 
       if (qrCodePreview) {
-        const qrCodeBlob = await fetch(qrCodePreview).then((res) => res.blob());
+        const qrCodeBlob = await fetch(qrCodePreview).then(res => res.blob());
         const qrCodeFormData = new FormData();
-        qrCodeFormData.append(
-          "file",
-          new File([qrCodeBlob], "variant-qr.png", { type: "image/png" })
-        );
+        qrCodeFormData.append("file", new File([qrCodeBlob], 'variant-qr..png', { type: 'image/png' }));
         const res = await fetch("/api/upload", {
           method: "POST",
           body: qrCodeFormData,
@@ -217,6 +233,11 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
         discount: Number(values.discount),
         stockQuantity: Number(values.stockQuantity),
         stockAlertQuantity: Number(values.stockAlertQuantity),
+        packingCharges: Number(values.packingCharges),
+        laborCharges: Number(values.laborCharges),
+        electricityCharges: Number(values.electricityCharges),
+        others1: Number(values.others1),
+        others2: Number(values.others2),
         image: imagePath,
         qrCode: qrCodePath,
       };
@@ -285,11 +306,21 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               </FormControl>
             </FormItem>
             <FormItem>
-              <FormLabel>Product Total Price</FormLabel>
+              <FormLabel>Product Price</FormLabel>
               <FormControl>
                 <Input
                   type="number"
-                  value={productDetails.totalPrice}
+                  value={productDetails.purchasePrice}
+                  disabled
+                />
+              </FormControl>
+            </FormItem>
+            <FormItem>
+              <FormLabel>Selling/Board Price</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  value={productDetails.sellingPrice}
                   disabled
                 />
               </FormControl>
@@ -376,7 +407,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                       step="0.01"
                       {...field}
                       onWheel={(e) => e.currentTarget.blur()}
-                      disabled={isPending}
+                      readOnly={true}
                       className={numberInputStyles}
                     />
                   </FormControl>
@@ -453,6 +484,73 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             />
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+             <FormField
+              control={form.control}
+              name="packingCharges"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Packing Charges</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="laborCharges"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Labor Charges</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="electricityCharges"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Electricity Charges</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="others1"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Oil Expelling Charges</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="others2"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Others</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -497,7 +595,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
             <div>
               <FormLabel>QR Code</FormLabel>
               <p className="text-sm text-muted-foreground mb-2">
-                Generate a QR code.
+                Generate or upload a QR code.
               </p>
               <div className="flex space-x-2">
                 <Button
