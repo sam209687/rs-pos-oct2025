@@ -2,12 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import Invoice, { IInvoice } from "@/lib/models/invoice";
+import Customer from "@/lib/models/customer";
+import { getUserModel } from "@/lib/models/user";
 import { connectToDatabase } from "@/lib/db";
+// This is an example, you would need to create this utility function
+// to generate sequential invoice numbers (e.g., INV-0001, INV-0002).
+// import { getNextInvoiceNumber } from "@/lib/utils"; 
 
-// This is the data structure we'll send from the client
 export type InvoiceDataPayload = {
   customerId: string;
-  // ✅ FIX: Define the structure of the items array to include variantId
+  billedById: string;
   items: {
     variantId: string;
     name: string;
@@ -15,6 +19,7 @@ export type InvoiceDataPayload = {
     quantity: number;
     mrp: number;
     gstRate: number;
+    hsn?: string;
   }[];
   subtotal: number;
   discount: number;
@@ -26,34 +31,69 @@ export type InvoiceDataPayload = {
 
 export async function createInvoice(invoiceData: InvoiceDataPayload) {
   try {
-    // In a real app, you'd get the full URL from environment variables
-    const response = await fetch('http://localhost:3000/api/invoices', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customer: invoiceData.customerId,
-        items: invoiceData.items, // This now includes the variantId
-        subtotal: invoiceData.subtotal,
-        discount: invoiceData.discount,
-        packingChargeDiscount: invoiceData.packingChargeDiscount,
-        gstAmount: invoiceData.gstAmount,
-        totalPayable: invoiceData.totalPayable,
-        paymentMethod: invoiceData.paymentMethod,
-      }),
-    });
+    await connectToDatabase();
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to create invoice.");
-    }
+    // Example: const invoiceNumber = await getNextInvoiceNumber();
+    const invoiceNumber = `INV-${Date.now()}`; // Placeholder
 
-    const savedInvoice: IInvoice = await response.json();
-    revalidatePath("/admin/invoices");
+    const newInvoice = new Invoice({
+      invoiceNumber,
+      customer: invoiceData.customerId,
+      billedBy: invoiceData.billedById,
+      items: invoiceData.items,
+      subtotal: invoiceData.subtotal,
+      discount: invoiceData.discount,
+      packingChargeDiscount: invoiceData.packingChargeDiscount,
+      gstAmount: invoiceData.gstAmount,
+      totalPayable: invoiceData.totalPayable,
+      paymentMethod: invoiceData.paymentMethod,
+    });
 
-    return { success: true, data: savedInvoice };
+    const savedInvoice = await newInvoice.save();
 
+    revalidatePath("/admin/invoice");
+    revalidatePath("/cashier/invoice");
+
+    return { success: true, data: JSON.parse(JSON.stringify(savedInvoice)) };
   } catch (error: any) {
     console.error("Create invoice action error:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getInvoices(): Promise<{ success: boolean; data?: IInvoice[]; message?: string; }> {
+  try {
+    await connectToDatabase();
+    const User = getUserModel(); // Ensure User model is registered
+    const invoices = await Invoice.find({})
+      .populate({ path: 'customer', model: Customer, select: 'name phone' })
+      .populate({ path: 'billedBy', model: User, select: 'name' })
+      .sort({ createdAt: -1 })
+      .lean();
+    return { success: true, data: JSON.parse(JSON.stringify(invoices)) };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function cancelInvoice(invoiceId: string) {
+  try {
+    await connectToDatabase();
+    const updatedInvoice = await Invoice.findByIdAndUpdate(
+      invoiceId,
+      { status: 'cancelled' },
+      { new: true }
+    );
+
+    if (!updatedInvoice) {
+      throw new Error("Invoice not found.");
+    }
+    
+    revalidatePath("/admin/invoice");
+    revalidatePath("/cashier/invoice");
+    
+    return { success: true, data: JSON.parse(JSON.stringify(updatedInvoice)) };
+  } catch (error: any) {
     return { success: false, message: error.message };
   }
 }
@@ -63,7 +103,7 @@ export const getInvoiceCountByCustomer = async (customerId: string) => {
     await connectToDatabase();
     const count = await Invoice.countDocuments({ customer: customerId });
     return { success: true, data: count };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to fetch invoice count:", error);
     return { success: false, message: "Failed to fetch invoice count." };
   }

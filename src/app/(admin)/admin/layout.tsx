@@ -7,6 +7,7 @@ import { SidebarToggle } from "@/components/admin/SidebarToggle";
 import { useSession } from "next-auth/react"; // For session data
 import { redirect } from "next/navigation"; // For client-side redirect
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { PrintPreview } from "@/components/pos/PrintPreview";
 
 export default function AdminLayout({
   children,
@@ -52,6 +53,7 @@ export default function AdminLayout({
           </QueryProvider>
           
         </main>
+        <PrintPreview />
       </div>
     </div>
   );

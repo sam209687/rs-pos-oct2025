@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { CashierSidebarContent } from "./_components/CashierSidebarContent";
 import { cn } from "@/lib/utils";
 import { SessionProvider } from "next-auth/react";
+import { PrintPreview } from "@/components/pos/PrintPreview";
 
 interface CashierLayoutProps {
   children: React.ReactNode;
@@ -36,6 +37,7 @@ export default function CashierLayout({ children }: CashierLayoutProps) {
           <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
             {children}
           </main>
+          <PrintPreview />
         </div>
       </div>
     </SessionProvider>

@@ -18,6 +18,7 @@ import {
   Amphora,
   ReceiptIndianRupee,
   UserCircle,
+  ReceiptText, // ✅ 1. Import the icon if it's not already there
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-// ✅ 1. Import the new notification store
 import { useNotificationStore } from "@/store/notification.store";
 
 interface AdminSidebarProps {
@@ -42,17 +42,14 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
-  // ✅ 2. Get the unread count and fetch action from the store
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
-  // ✅ 3. Fetch the unread count when the component loads
   useEffect(() => {
     if (userId) {
       fetchUnreadCount(userId);
     }
   }, [userId, fetchUnreadCount]);
 
-  // ✅ 4. Define navItems inside the component to access the unreadCount state
   const navItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Manage Cashiers", href: "/admin/manage-cashiers", icon: Users },
@@ -61,11 +58,11 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
     { name: "Unit", href: "/admin/unit", icon: Ruler },
     { name: "Oil Expeller Charges", href: "/admin/oec", icon: Amphora },
     { name: "POS", href: "/admin/pos", icon: BadgeIndianRupee },
+    { name: "Invoice", href: "/admin/invoice", icon: ReceiptText }, // ✅ 2. Add the new invoice link here
     { 
       name: "Messages", 
       href: "/admin/messages", 
       icon: Mail, 
-      // ✅ 5. Set the badge property dynamically from the store
       badge: unreadCount > 0 ? unreadCount : undefined 
     },
   ];
@@ -87,7 +84,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
         isCollapsed ? "w-20" : "w-64"
       )}
     >
-      {/* ... (Logo section remains unchanged) ... */}
+      {/* ... (Logo section) ... */}
        <div
         className={cn(
           "flex items-center justify-center h-16 border-b dark:border-gray-800",
@@ -140,7 +137,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
               >
                 {item.name}
               </span>
-              {/* ✅ 6. Render the badge if the item has a badge count */}
               {item.badge && (
                 <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {item.badge}
@@ -151,7 +147,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
           </Link>
         ))}
 
-        {/* ... (Dropdown menus and Logout section remain unchanged) ... */}
+        {/* ... (Dropdown menus and Logout section) ... */}
          {/* Product Dropdown NavLink */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

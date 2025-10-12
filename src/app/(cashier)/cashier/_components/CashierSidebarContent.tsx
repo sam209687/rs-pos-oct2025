@@ -15,12 +15,12 @@ export function CashierSidebarContent({ isCollapsed, onToggle }: CashierSidebarC
 
   const navItems = [
     { name: "POS", href: "/cashier/pos", icon: ShoppingCart },
+    // ✅ This link is correctly included
     { name: "Invoice", href: "/cashier/invoice", icon: ReceiptText },
     { name: "Transactions", href: "/cashier/transactions", icon: ClipboardList },
     { name: "Message", href: "/cashier/message", icon: Mail },
   ];
   
-
   const user = {
     name: session?.user?.name || "Cashier",
     email: session?.user?.email || "cashier@pos.com",
