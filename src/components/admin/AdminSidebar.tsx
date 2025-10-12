@@ -1,7 +1,6 @@
-// src/components/admin/AdminSidebar.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -24,16 +23,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/themes/ThemeToggle";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-
-// ✅ 1. Import the new badge component
-import { ResetNotificationBadge } from "./ResetNotificationBadge";
+// ✅ 1. Import the new notification store
+import { useNotificationStore } from "@/store/notification.store";
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -41,7 +39,20 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
 
+  // ✅ 2. Get the unread count and fetch action from the store
+  const { unreadCount, fetchUnreadCount } = useNotificationStore();
+
+  // ✅ 3. Fetch the unread count when the component loads
+  useEffect(() => {
+    if (userId) {
+      fetchUnreadCount(userId);
+    }
+  }, [userId, fetchUnreadCount]);
+
+  // ✅ 4. Define navItems inside the component to access the unreadCount state
   const navItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Manage Cashiers", href: "/admin/manage-cashiers", icon: Users },
@@ -50,7 +61,13 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
     { name: "Unit", href: "/admin/unit", icon: Ruler },
     { name: "Oil Expeller Charges", href: "/admin/oec", icon: Amphora },
     { name: "POS", href: "/admin/pos", icon: BadgeIndianRupee },
-    { name: "Messages", href: "/admin/messages", icon: Mail, notification: true }, // Add a flag
+    { 
+      name: "Messages", 
+      href: "/admin/messages", 
+      icon: Mail, 
+      // ✅ 5. Set the badge property dynamically from the store
+      badge: unreadCount > 0 ? unreadCount : undefined 
+    },
   ];
 
   const user = {
@@ -71,7 +88,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
       )}
     >
       {/* ... (Logo section remains unchanged) ... */}
-      <div
+       <div
         className={cn(
           "flex items-center justify-center h-16 border-b dark:border-gray-800",
           isCollapsed ? "px-2" : "px-4"
@@ -94,7 +111,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
         />
       </div>
 
-
       {/* Nav Links */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
@@ -115,7 +131,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
                 isCollapsed ? "mr-0" : "mr-3"
               )}
             />
-            {/* ✅ 2. Use flexbox to align text and badge */}
             <div className={cn("flex-1 flex justify-between items-center", isCollapsed ? "hidden" : "")}>
               <span
                 className={cn(
@@ -125,10 +140,13 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
               >
                 {item.name}
               </span>
-              {/* ✅ 3. Conditionally render the badge for the "Messages" item */}
-              {item.name === "Messages" && <ResetNotificationBadge />}
+              {/* ✅ 6. Render the badge if the item has a badge count */}
+              {item.badge && (
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {item.badge}
+                </span>
+              )}
             </div>
-             {/* Render only icon when collapsed */}
             <span className={cn("sr-only", isCollapsed ? "not-sr-only" : "sr-only")}>{item.name}</span>
           </Link>
         ))}
@@ -161,7 +179,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56 z-[99]" side="right" sideOffset={10}>
-            {/* Nav link to the products page */}
             <DropdownMenuItem asChild>
               <Link
                 href="/admin/products"
@@ -176,7 +193,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
                 Products
               </Link>
             </DropdownMenuItem>
-            {/* Original "Unit" nav link, now a dropdown item */}
             <DropdownMenuItem asChild>
               <Link
                 href="/admin/variants"
@@ -191,7 +207,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
                 Create Variant
               </Link>
             </DropdownMenuItem>
-            {/* New link for "Generate Batch Variants" */}
             <DropdownMenuItem asChild>
               <Link
                 href="/admin/batch"
@@ -281,14 +296,13 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
-      {/* Bottom Section: Theme Toggle & Logout */}
+       {/* Bottom Section: Theme Toggle & Logout */}
       <div
         className={cn(
           "px-2 py-4 border-t dark:border-gray-800",
           isCollapsed ? "flex flex-col items-center" : ""
         )}
       >
-        {/* Theme Toggle */}
         <div
           className={cn(
             "mb-4 w-full flex items-center",
@@ -297,8 +311,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
         >
           <ThemeToggle />
         </div>
-
-        {/* Logout Button with Avatar */}
         <Button
           variant="ghost"
           className={cn(

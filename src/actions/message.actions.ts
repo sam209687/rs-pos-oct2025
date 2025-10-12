@@ -30,6 +30,7 @@ export const getConversations = async (userId: string) => {
       name?: string; // Name can be string or undefined
       email: string;
       role: string;
+      storeLocation?: string;
     };
 
     let potentialRecipients: Recipient[] = [];
@@ -37,17 +38,17 @@ export const getConversations = async (userId: string) => {
     if (currentUserRole === 'admin') {
       potentialRecipients = await User.find(
         { role: 'cashier' },
-        '_id name email role'
+        '_id name email role storeLocation'
       ).lean();
     } else if (currentUserRole === 'cashier') {
       const admins = await User.find(
         { role: 'admin' },
-        '_id name email role'
+        '_id name email role storeLocation'
       ).lean();
       
       const otherCashiers = await User.find(
         { role: 'cashier', _id: { $ne: userObjectId } },
-        '_id name email role'
+        '_id name email role storeLocation'
       ).lean();
 
       potentialRecipients = [...admins, ...otherCashiers];
@@ -148,5 +149,19 @@ export const createMessage = async (data: z.infer<typeof messageSchema>) => {
     }
     console.error("Failed to create message:", error);
     return { success: false, message: "Failed to send message." };
+  }
+};
+
+export const getTotalUnreadMessages = async (userId: string) => {
+  try {
+    await connectToDatabase();
+    const userObjectId = new Types.ObjectId(userId);
+    const count = await Message.countDocuments({
+      recipient: userObjectId,
+      read: false,
+    });
+    return { success: true, count };
+  } catch (error) {
+    return { success: false, count: 0 };
   }
 };

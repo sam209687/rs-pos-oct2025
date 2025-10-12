@@ -13,3 +13,5 @@ export default async function CashierMessagePage() {
 
   return <MessageInterface session={session as Session} />;
 }
+
+// tani6444@rs.com tani6444

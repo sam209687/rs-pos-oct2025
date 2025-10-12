@@ -2,11 +2,13 @@ import { create } from 'zustand';
 import { getConversations, getMessages, createMessage as createMessageAction } from '@/actions/message.actions';
 import { IMessage } from '@/lib/models/message';
 import { toast } from 'sonner';
+import { useNotificationStore } from './notification.store';
 
 interface IUserStub {
     _id: string;
     name: string;
     role: string;
+    storeLocation?: string;
 }
 
 interface IConversation {
@@ -59,6 +61,7 @@ export const useMessageStore = create<MessageStoreState>((set, get) => ({
                 set({ messages: result.data, isLoading: false });
                 // After reading messages, refresh the conversation list to clear the badge
                 get().fetchConversations(userId);
+                useNotificationStore.getState().fetchUnreadCount(userId);
             } else {
                 toast.error(result.message);
                 set({ isLoading: false, messages: [] });

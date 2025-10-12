@@ -44,7 +44,7 @@ export function ConversationList() {
               <div className="flex-1">
                 <p className="font-medium flex items-center">
                   <User className="h-4 w-4 mr-2" />
-                  {conv.user.name}
+                  {conv.user.name}{conv.user.storeLocation ? ` (${conv.user.storeLocation})` : ''}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{conv.user.role}</p>
               </div>
