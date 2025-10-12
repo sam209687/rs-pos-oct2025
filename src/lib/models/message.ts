@@ -1,6 +1,6 @@
 // src/lib/models/message.ts
+
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { IUser } from './user'; // Assuming a User model exists
 import './user'; // Import User model to reference it
 
 export interface IMessage extends Document {
@@ -40,3 +40,5 @@ const MessageSchema: Schema = new Schema(
 const Message = mongoose.models.Message || mongoose.model<IMessage>('Message', MessageSchema);
 
 export default Message;
+
+// NO MORE SERVER ACTIONS IN THIS FILE

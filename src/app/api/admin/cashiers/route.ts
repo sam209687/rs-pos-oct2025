@@ -1,15 +1,14 @@
+// src/app/api/admin/cashiers/reset-password/routeModule.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import { getUserModel, IUser } from '@/lib/models/user';
-import bcrypt from 'bcryptjs';
-// import { getServerSession } from 'next-auth'; // For protecting API routes
-// import { authOptions, auth } from '@/lib/auth';
+import argon2 from 'argon2'; // Changed from bcryptjs
 import { auth } from '@/lib/auth';
 
 // Helper to check admin role
 async function checkAdminAuth() {
-  const session = await auth(); // authOptions should be exported from auth.ts
+  const session = await auth();
   if (!session || !session.user || session.user.role !== 'admin') {
     return NextResponse.json({ message: 'Unauthorized. Admin access required.' }, { status: 403 });
   }
@@ -39,7 +38,9 @@ export async function POST(req: NextRequest) {
     // Generate username: firstFourLettersOfName + lastFourDigitsOfAadhaar + @rs.com
     const username = `${cashierName.substring(0, 4).toLowerCase()}${aadhaar.substring(aadhaar.length - 4)}@rs.com`;
     const defaultPassword = username; // Default password is the username
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    
+    // ✅ CHANGED: Hashing with Argon2
+    const hashedPassword = await argon2.hash(defaultPassword);
 
     const newCashier = await User.create({
       name: cashierName,

@@ -1,10 +1,11 @@
-// src/app/api/cashier/[id]/reset-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import { getUserModel } from '@/lib/models/user';
 import { Types } from 'mongoose';
-import crypto from 'crypto'; // For generating OTP/token
-import bcrypt from 'bcryptjs'; // To hash the temporary password
+import bcrypt from 'bcryptjs';
+
+// The cost factor for bcrypt hashing. Higher is more secure but slower.
+const password_hash_cost = 12;
 
 // Utility function to generate a simple temporary password
 function generateTempPassword(length = 8): string {
@@ -33,23 +34,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     // Generate a new temporary password
-    const tempPassword = generateTempPassword(8); // Or a more complex one
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const tempPassword = generateTempPassword(8);
+    
+    // Hashing with bcryptjs
+    const hashedPassword = await bcrypt.hash(tempPassword, password_hash_cost);
 
     // Update cashier's password and clear reset flags
     cashier.password = hashedPassword;
-    cashier.isPasswordResetRequested = false; // Reset this flag if it was used for a request flow
-    cashier.passwordResetToken = undefined; // Clear any old tokens
-    cashier.passwordResetExpires = undefined; // Clear any old expiry
+    cashier.isPasswordResetRequested = false;
+    cashier.passwordResetToken = undefined;
+    cashier.passwordResetExpires = undefined;
 
     await cashier.save();
 
-    // TODO: Implement actual email/SMS sending logic here
-    // For now, we'll just log it. In production, you'd integrate with a mail service.
     console.log(`--- Password Reset for ${cashier.name} (${cashier.email}) ---`);
     console.log(`Temporary Password: ${tempPassword}`);
     console.log(`Personal Email for sending: ${cashier.personalEmail || 'Not Available'}`);
-    // You would typically send an email to cashier.personalEmail with tempPassword
 
     return NextResponse.json({ message: `Password reset successfully. Temporary password sent to ${cashier.personalEmail || 'cashier\'s personal email'}.` }, { status: 200 });
 

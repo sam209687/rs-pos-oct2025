@@ -1,3 +1,5 @@
+// src/actions/message.actions.ts
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -7,60 +9,79 @@ import { getUserModel } from "@/lib/models/user";
 import { messageSchema } from "@/lib/schemas";
 import { z } from "zod";
 import { Types } from "mongoose";
+import { auth } from "@/lib/auth";
 
 const User = getUserModel();
 
-// ✅ FIX: Update the conversations aggregation pipeline to use Types.ObjectId
 export const getConversations = async (userId: string) => {
   try {
     await connectToDatabase();
+    const session = await auth();
+    if (!session?.user) {
+      throw new Error("Not authenticated");
+    }
 
-    const conversations = await Message.aggregate([
+    const currentUserRole = session.user.role;
+    const userObjectId = new Types.ObjectId(userId);
+
+    // ✅ FIX 1: Allow the 'name' property to be optional to match the database model.
+    type Recipient = {
+      _id: Types.ObjectId;
+      name?: string; // Name can be string or undefined
+      email: string;
+      role: string;
+    };
+
+    let potentialRecipients: Recipient[] = [];
+
+    if (currentUserRole === 'admin') {
+      potentialRecipients = await User.find(
+        { role: 'cashier' },
+        '_id name email role'
+      ).lean();
+    } else if (currentUserRole === 'cashier') {
+      const admins = await User.find(
+        { role: 'admin' },
+        '_id name email role'
+      ).lean();
+      
+      const otherCashiers = await User.find(
+        { role: 'cashier', _id: { $ne: userObjectId } },
+        '_id name email role'
+      ).lean();
+
+      potentialRecipients = [...admins, ...otherCashiers];
+    }
+
+    const unreadCounts = await Message.aggregate([
       {
         $match: {
-          $or: [{ sender: new Types.ObjectId(userId) }, { recipient: new Types.ObjectId(userId) }],
+          recipient: userObjectId,
+          read: false,
         },
-      },
-      {
-        $project: {
-          withUser: {
-            $cond: {
-              if: { $eq: ["$sender", new Types.ObjectId(userId)] },
-              then: "$recipient",
-              else: "$sender",
-            },
-          },
-          createdAt: 1,
-        },
-      },
-      {
-        $sort: { createdAt: -1 },
       },
       {
         $group: {
-          _id: "$withUser",
-          lastMessageAt: { $first: "$createdAt" },
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "userDetails",
-        },
-      },
-      {
-        $unwind: "$userDetails",
-      },
-      {
-        $project: {
-          _id: 0,
-          user: "$userDetails",
-          lastMessageAt: 1,
+          _id: '$sender',
+          count: { $sum: 1 },
         },
       },
     ]);
+
+    const unreadMap = new Map<string, number>();
+    unreadCounts.forEach(item => {
+      unreadMap.set(item._id.toString(), item.count);
+    });
+
+    const conversations = potentialRecipients.map(user => ({
+      // ✅ FIX 2: Provide a fallback for the name to ensure it's always a string.
+      user: {
+        ...user,
+        name: user.name || user.email, // Use email if name is missing
+      },
+      unreadCount: unreadMap.get(user._id.toString()) || 0,
+      lastMessageAt: null,
+    }));
 
     return { success: true, data: JSON.parse(JSON.stringify(conversations)) };
   } catch (error) {
@@ -83,17 +104,19 @@ export const getAllUsersForMessaging = async () => {
 export const getMessages = async (userId: string, recipientId: string) => {
   try {
     await connectToDatabase();
+    const userObjectId = new Types.ObjectId(userId);
+    const recipientObjectId = new Types.ObjectId(recipientId);
 
     const messages = await Message.find({
       $or: [
-        { sender: userId, recipient: recipientId },
-        { sender: recipientId, recipient: userId },
+        { sender: userObjectId, recipient: recipientObjectId },
+        { sender: recipientObjectId, recipient: userObjectId },
       ],
     }).sort({ createdAt: 1 }).lean();
 
     await Message.updateMany(
-      { sender: recipientId, recipient: userId, read: false },
-      { read: true }
+      { sender: recipientObjectId, recipient: userObjectId, read: false },
+      { $set: { read: true } }
     );
 
     return { success: true, data: JSON.parse(JSON.stringify(messages)) };
@@ -108,10 +131,15 @@ export const createMessage = async (data: z.infer<typeof messageSchema>) => {
     const validatedData = messageSchema.parse(data);
     await connectToDatabase();
 
-    const newMessage = new Message(validatedData);
+    const newMessage = new Message({
+      ...validatedData,
+      sender: new Types.ObjectId(validatedData.sender),
+      recipient: new Types.ObjectId(validatedData.recipient),
+    });
     await newMessage.save();
 
     revalidatePath("/admin/messages");
+    revalidatePath("/cashier/message");
 
     return { success: true, data: JSON.parse(JSON.stringify(newMessage)), message: "Message sent successfully!" };
   } catch (error) {

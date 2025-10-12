@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/lib/db';
 import { getUserModel, IUser } from '@/lib/models/user';
 import { sendOTP } from '@/lib/email';
 import { generateNumericOTP } from '@/lib/otp';
-import * as crypto from 'crypto';
+import crypto from 'crypto'; // This is a server-only import.
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Existing User (Admin/Cashier) Forgot Password Flow ---
     console.log('Entering Existing User Flow (role:', user.role, ')...');
     
     if (user.role === 'admin') {
@@ -42,7 +41,6 @@ export async function POST(req: NextRequest) {
       );
     } else if (user.role === 'cashier') {
       user.isPasswordResetRequested = true;
-      // This token is just to flag the request; the OTP will be sent by the admin
       user.passwordResetToken = crypto.randomBytes(20).toString('hex');
       user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000);
       await user.save();

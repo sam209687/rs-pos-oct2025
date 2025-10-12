@@ -3,11 +3,11 @@ import { MessageInterface } from '@/components/messages/MessageInterface';
 import { redirect } from 'next/navigation';
 import { Session } from 'next-auth';
 
-export default async function AdminMessagesPage() {
+export default async function CashierMessagePage() {
   const session = await auth();
 
   // Protect the route on the server
-  if (!session || session.user.role !== 'admin') {
+  if (!session || session.user.role !== 'cashier') {
     redirect('/auth');
   }
 

@@ -8,18 +8,17 @@ import {
   LayoutDashboard,
   Users,
   Shirt,
-  LogOut,
   Settings,
   Mail,
   ChartColumnStacked,
   Ruler,
-  ReceiptIndianRupee,
-  UserCircle,
+  BadgeIndianRupee,
   Store,
   Box,
   TrendingUpDown,
   Amphora,
-  BadgeIndianRupee, // Import the Box icon for Products
+  ReceiptIndianRupee,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +31,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+// ✅ 1. Import the new badge component
+import { ResetNotificationBadge } from "./ResetNotificationBadge";
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -48,7 +50,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
     { name: "Unit", href: "/admin/unit", icon: Ruler },
     { name: "Oil Expeller Charges", href: "/admin/oec", icon: Amphora },
     { name: "POS", href: "/admin/pos", icon: BadgeIndianRupee },
-    { name: "Messages", href: "/admin/messages", icon: Mail },
+    { name: "Messages", href: "/admin/messages", icon: Mail, notification: true }, // Add a flag
   ];
 
   const user = {
@@ -68,7 +70,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
         isCollapsed ? "w-20" : "w-64"
       )}
     >
-      {/* Logo & Seed */}
+      {/* ... (Logo section remains unchanged) ... */}
       <div
         className={cn(
           "flex items-center justify-center h-16 border-b dark:border-gray-800",
@@ -92,6 +94,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
         />
       </div>
 
+
       {/* Nav Links */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
@@ -112,18 +115,26 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
                 isCollapsed ? "mr-0" : "mr-3"
               )}
             />
-            <span
-              className={cn(
-                "transition-all duration-200 ease-in-out origin-left group-hover:scale-105",
-                isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
-              )}
-            >
-              {item.name}
-            </span>
+            {/* ✅ 2. Use flexbox to align text and badge */}
+            <div className={cn("flex-1 flex justify-between items-center", isCollapsed ? "hidden" : "")}>
+              <span
+                className={cn(
+                  "transition-all duration-200 ease-in-out origin-left group-hover:scale-105",
+                  isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
+                )}
+              >
+                {item.name}
+              </span>
+              {/* ✅ 3. Conditionally render the badge for the "Messages" item */}
+              {item.name === "Messages" && <ResetNotificationBadge />}
+            </div>
+             {/* Render only icon when collapsed */}
+            <span className={cn("sr-only", isCollapsed ? "not-sr-only" : "sr-only")}>{item.name}</span>
           </Link>
         ))}
 
-        {/* Product Dropdown NavLink */}
+        {/* ... (Dropdown menus and Logout section remain unchanged) ... */}
+         {/* Product Dropdown NavLink */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -270,7 +281,6 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
-
       {/* Bottom Section: Theme Toggle & Logout */}
       <div
         className={cn(

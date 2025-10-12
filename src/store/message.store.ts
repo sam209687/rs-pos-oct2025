@@ -1,6 +1,5 @@
-// src/store/message.store.ts
 import { create } from 'zustand';
-import { getConversations, getMessages, createMessage as createMessageAction, getAllUsersForMessaging } from '@/actions/message.actions';
+import { getConversations, getMessages, createMessage as createMessageAction } from '@/actions/message.actions';
 import { IMessage } from '@/lib/models/message';
 import { toast } from 'sonner';
 
@@ -10,20 +9,18 @@ interface IUserStub {
     role: string;
 }
 
-// ✅ NEW: Type for a conversation, including last message details
 interface IConversation {
   user: IUserStub;
-  lastMessageAt?: Date;
+  lastMessageAt?: Date | null;
+  unreadCount: number;
 }
 
 interface MessageStoreState {
-    allUsers: IUserStub[]; // ✅ NEW: State for all users
-    conversations: IConversation[]; // ✅ UPDATED: Conversations now use the new interface
+    conversations: IConversation[];
     messages: IMessage[];
     activeRecipientId: string | null;
     activeRecipient: IUserStub | null;
     isLoading: boolean;
-    fetchAllUsers: (userId: string) => Promise<void>; // ✅ NEW: Action to fetch all users
     fetchConversations: (userId: string) => Promise<void>;
     fetchMessages: (userId: string, recipientId: string) => Promise<void>;
     sendMessage: (senderId: string, recipientId: string, content: string) => Promise<void>;
@@ -31,43 +28,27 @@ interface MessageStoreState {
 }
 
 export const useMessageStore = create<MessageStoreState>((set, get) => ({
-    allUsers: [], // ✅ NEW: Initialize state
     conversations: [],
     messages: [],
     activeRecipientId: null,
     activeRecipient: null,
     isLoading: false,
 
-    fetchAllUsers: async (userId) => {
+    // This action calls the new backend logic to get the correct user list
+    fetchConversations: async (userId) => {
         set({ isLoading: true });
-        console.log("Fetching all users...");
         try {
-            const result = await getAllUsersForMessaging();
-            console.log("getAllUsersForMessaging result:", result);
+            const result = await getConversations(userId);
             if (result.success) {
-                // Filter out the current user and sort admins first
-                const sortedUsers = result.data
-                    .filter((u: IUserStub) => u._id !== userId)
-                    .sort((a: IUserStub, b: IUserStub) => (b.role === 'admin' ? 1 : a.role === 'admin' ? -1 : 0));
-                
-                // Set all users as initial conversations (without last message data)
-                const initialConversations = sortedUsers.map((user: IUserStub) => ({ user }));
-                set({ allUsers: sortedUsers, conversations: initialConversations, isLoading: false });
-                console.log("Users fetched and sorted:", sortedUsers);
+                set({ conversations: result.data, isLoading: false });
             } else {
                 toast.error(result.message);
-                set({ isLoading: false, allUsers: [] });
+                set({ isLoading: false, conversations: [] });
             }
         } catch (error) {
-            console.error("Failed to fetch all users:", error);
-            set({ isLoading: false, allUsers: [] });
+            console.error("Failed to fetch conversations:", error);
+            set({ isLoading: false, conversations: [] });
         }
-    },
-
-    fetchConversations: async (userId) => {
-        // This action now serves to update conversation history, but initial list comes from fetchAllUsers
-        // We'll update this logic in a future step if needed. For now, it remains as-is.
-        // The frontend will primarily rely on fetchAllUsers
     },
 
     fetchMessages: async (userId, recipientId) => {
@@ -76,6 +57,8 @@ export const useMessageStore = create<MessageStoreState>((set, get) => ({
             const result = await getMessages(userId, recipientId);
             if (result.success) {
                 set({ messages: result.data, isLoading: false });
+                // After reading messages, refresh the conversation list to clear the badge
+                get().fetchConversations(userId);
             } else {
                 toast.error(result.message);
                 set({ isLoading: false, messages: [] });
@@ -91,18 +74,20 @@ export const useMessageStore = create<MessageStoreState>((set, get) => ({
         const result = await createMessageAction(messageData);
 
         if (result.success) {
-            const newMessage = { ...result.data, createdAt: new Date() };
+            const newMessage = result.data;
             set(state => ({
                 messages: [...state.messages, newMessage],
             }));
-            toast.success("Message sent!");
+            // After sending, refresh the list to show the new unread count for the other user
+            get().fetchConversations(senderId);
         } else {
             toast.error(result.message);
         }
     },
 
     setActiveRecipient: (recipientId) => {
-        const recipient = get().allUsers.find(c => c._id === recipientId) || null;
+        const conversation = get().conversations.find(c => c.user._id === recipientId);
+        const recipient = conversation ? conversation.user : null;
         set({ activeRecipientId: recipientId, activeRecipient: recipient });
     }
 }));

@@ -40,3 +40,8 @@ here we are using this api to build the calendar
 https://jayantur13.github.io/calendar-bharat/calendar/2024.json
 
 son each year it is necessary to update the JSon file in src/data/json
+
+Clean cmds
+1. rm -rf .next
+2. rm -rf node_modules
+3. npm cache clean --force
