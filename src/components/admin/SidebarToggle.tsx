@@ -1,18 +1,15 @@
-// src/components/admin/SidebarToggle.tsx
-"use client"
-
-import { Button } from "@/components/ui/button"
-import { Menu } from "lucide-react"
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface SidebarToggleProps {
+  isCollapsed: boolean;
   onToggle: () => void;
 }
 
-export function SidebarToggle({ onToggle }: SidebarToggleProps) {
+export function SidebarToggle({ isCollapsed, onToggle }: SidebarToggleProps) {
   return (
-    <Button variant="ghost" size="icon" onClick={onToggle} className="lg:hidden">
-      <Menu className="h-6 w-6" />
-      <span className="sr-only">Toggle sidebar</span>
+    <Button onClick={onToggle} variant="ghost" size="icon" className="hidden lg:flex">
+      {isCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
     </Button>
-  )
+  );
 }

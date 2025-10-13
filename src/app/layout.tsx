@@ -8,7 +8,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/components/themes/theme-provider";
 import { auth } from '@/lib/auth';
-import SkeltonLoader from "@/components/skelton/skelton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,7 +54,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (status === "loading" && !pathname.startsWith("/auth")) {
     return <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <SkeltonLoader />
       </div>
   }
 

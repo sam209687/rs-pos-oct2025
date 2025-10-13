@@ -1,0 +1,32 @@
+1. Delete the Next.js build cache:
+
+Bash
+
+rm -rf .next
+2. Delete the installed packages folder:
+
+Bash
+
+rm -rf node_modules
+3. Delete the package lock file:
+
+Bash
+
+rm package-lock.json
+4. Force-clean the NPM cache:
+This is a crucial new step. It clears npm's stored package data, in case it's corrupted.
+
+Bash
+
+npm cache clean --force
+5. Reinstall all dependencies from scratch:
+
+Bash
+
+npm install
+6. Try running the server again:
+
+Bash
+
+npm run dev
+This thorough process is the most reliable way to fix persistent environment-related issues. By clearing all possible caches before reinstalling, you guarantee that you are getting a completely fresh start, which should resolve this Module parse failed error for good.
