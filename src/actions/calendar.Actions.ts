@@ -1,38 +1,54 @@
 "use server";
 
-export interface Holiday {
-  date: string;
+import { format } from 'date-fns';
+
+type Holiday = {
   name: string;
-}
+  date: string;
+};
 
-// Define the interface for the Google Calendar API event item
-interface Event {
-  summary: string;
-  start: {
-    date: string;
-  };
-}
-
-export async function getIndianHolidays() {
+export async function getIndianHolidays(): Promise<Holiday[]> {
   const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
-  const calendarId = 'en.indian%23holiday%40group.v.calendar.google.com';
-  const timeMin = new Date().toISOString();
-  const timeMax = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
+  const calendarId = process.env.PUBLIC_INDIAN_HOLIDAYS_CALENDAR_ID;
 
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?key=${apiKey}&timeMin=${timeMin}&timeMax=${timeMax}&maxResults=200`;
+  if (!apiKey || !calendarId) {
+    console.error("Google Calendar API Key or Calendar ID is not configured.");
+    return [];
+  }
+
+  const year = new Date().getFullYear();
+  const timeMin = new Date(year, 0, 1).toISOString();
+  const timeMax = new Date(year, 11, 31).toISOString();
+
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+  url.searchParams.append('key', apiKey);
+  url.searchParams.append('timeMin', timeMin);
+  url.searchParams.append('timeMax', timeMax);
+  url.searchParams.append('singleEvents', 'true');
+  url.searchParams.append('orderBy', 'startTime');
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url.toString());
     if (!response.ok) {
-      throw new Error(`Google Calendar API error: ${response.statusText}`);
+      const error = await response.json();
+      throw new Error(`Google Calendar API error: ${error.error.message}`);
     }
+
     const data = await response.json();
-    return data.items.map((event: Event) => ({
-      date: event.start.date,
+
+    // ✅ ADD THIS LOG to see the raw response from Google
+    console.log("--- Raw Response from Google API ---", JSON.stringify(data, null, 2));
+
+    // Ensure data.items exists before trying to map it
+    const holidays: Holiday[] = data.items?.map((event: any) => ({
       name: event.summary,
-    }));
+      date: event.start.date,
+    })) || []; // Use || [] as a fallback in case items is undefined
+
+    return holidays;
+
   } catch (error) {
-    console.error("Error fetching holidays:", error);
+    console.error("Failed to fetch Indian holidays:", error);
     return [];
   }
 }

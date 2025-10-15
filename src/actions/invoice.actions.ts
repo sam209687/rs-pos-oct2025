@@ -5,9 +5,6 @@ import Invoice, { IInvoice } from "@/lib/models/invoice";
 import Customer from "@/lib/models/customer";
 import { getUserModel } from "@/lib/models/user";
 import { connectToDatabase } from "@/lib/db";
-// This is an example, you would need to create this utility function
-// to generate sequential invoice numbers (e.g., INV-0001, INV-0002).
-// import { getNextInvoiceNumber } from "@/lib/utils"; 
 
 export type InvoiceDataPayload = {
   customerId: string;
@@ -29,12 +26,52 @@ export type InvoiceDataPayload = {
   paymentMethod: 'cash' | 'upi' | 'card';
 };
 
+async function generateInvoiceNumber(): Promise<string> {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // getMonth() is 0-indexed
+
+  // Define the start and end of the current year for the query
+  const startOfYear = new Date(year, 0, 1);
+  const endOfYear = new Date(year + 1, 0, 1);
+
+  // Find the last invoice created within the current year
+  const lastInvoice = await Invoice.findOne({
+    createdAt: { $gte: startOfYear, $lt: endOfYear }
+  }).sort({ createdAt: -1 });
+
+  let nextSequence = 1;
+
+  if (lastInvoice && lastInvoice.invoiceNumber) {
+    // ✅ Add a check to ensure the invoice number is in the new format before parsing
+    const parts = lastInvoice.invoiceNumber.split('-');
+    
+    // The new format "INV-RS-000001-10-2025" has 5 parts
+    if (parts.length === 5 && parts[0] === 'INV' && parts[1] === 'RS') {
+      const lastSequence = parseInt(parts[2], 10);
+      // Additional check to make sure parsing was successful
+      if (!isNaN(lastSequence)) {
+        nextSequence = lastSequence + 1;
+      }
+    }
+    // If the format is old (e.g., "INV-123456789"), the condition fails
+    // and nextSequence correctly remains 1.
+  }
+  
+  // Pad the numbers with leading zeros to match the desired format
+  const paddedSequence = String(nextSequence).padStart(6, '0');
+  const paddedMonth = String(month).padStart(2, '0');
+  
+  return `INV-RS-${paddedSequence}-${paddedMonth}-${year}`;
+}
+
+
 export async function createInvoice(invoiceData: InvoiceDataPayload) {
   try {
     await connectToDatabase();
     
-    // Example: const invoiceNumber = await getNextInvoiceNumber();
-    const invoiceNumber = `INV-${Date.now()}`; // Placeholder
+    // Generate the new structured invoice number
+    const invoiceNumber = await generateInvoiceNumber();
 
     const newInvoice = new Invoice({
       invoiceNumber,

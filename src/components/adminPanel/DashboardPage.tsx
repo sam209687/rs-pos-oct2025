@@ -4,8 +4,6 @@ import { useAdminPanelStore, DashboardData } from '@/store/adminPanelStore';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-// import { TotalBalanceCard } from './TotalBalanceCard';
-// import { AnalyticsPerformanceChart } from './AnalyticsPerformanceChart';
 import { MonthlySalesChart } from './MonthlySalesChart';
 import { SalesOverviewChart } from './SalesOverviewChart';
 import { IncomeExpenseCards } from './IncomeExpenseCards';
@@ -30,6 +28,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
   const { dashboardData, isLoading, fetchDashboardData, refreshData } = useAdminPanelStore();
   const [salesData, setSalesData] = useState([]);
   const [salesMetrics, setSalesMetrics] = useState({ totalRevenue: 0, totalSales: 0, avgOrderValue: 0 });
+  
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().setDate(new Date().getDate() - 7)));
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
@@ -38,6 +37,18 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
   const handleFilterChange = (filterType: string, newFromDate?: Date, newToDate?: Date) => {
     setFromDate(newFromDate);
     setToDate(newToDate);
+  };
+
+  const handleCalendarDateChange = (date: Date | undefined) => {
+    if (date) {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        setFromDate(startOfDay);
+        setToDate(endOfDay);
+    }
   };
 
   useEffect(() => {
@@ -63,6 +74,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
   }, [initialData, fromDate, toDate]);
 
   if (isLoading || !dashboardData) {
+    // You can replace this with a proper DashboardSkeleton
     return <div>Loading...</div>;
   }
 
@@ -85,15 +97,22 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* <TotalBalanceCard totalBalance={dashboardData.totalBalance} totalSales={dashboardData.totalSales} /> */}
-        <DynamicSalesOverviewChart data={salesData} />
-        {/* <AnalyticsPerformanceChart data={dashboardData.analyticsPerformance} /> */}
-        <PermanentCalendarCard />
+        {/* Sales Overview now spans 2 columns */}
+        <div className="lg:col-span-2">
+          <DynamicSalesOverviewChart data={salesData} />
+        </div>
+        
+        {/* ✅ FIX: Make the calendar card span 2 columns to increase its width */}
+        <div className="lg:col-span-2">
+          <PermanentCalendarCard 
+              selectedDate={toDate} 
+              onDateChange={handleCalendarDateChange} 
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <MonthlySalesChart data={dashboardData.saleOverview} />
-        {/* <IncomeExpenseCards income={dashboardData.income} expense={dashboardData.expense} /> */}
       </div>
 
       <TransactionHistoryTable data={dashboardData.transactionHistory} />

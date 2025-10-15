@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+// ✅ FIX 2: Import the useSession hook
+import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +26,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Loader2, ShoppingCart } from "lucide-react";
 
 export function BillingSection() {
+  // ✅ FIX 2: Get the session data for the logged-in user
+  const { data: session } = useSession();
+
   const { cart, clearCart, addOecToCart, isGstEnabled, toggleGst, addToCart } = usePosStore();
   const { oecs, fetchOecs } = useOecStore();
   const {
@@ -116,6 +121,10 @@ export function BillingSection() {
   };
 
   const handlePrintBill = async () => {
+    if (!session?.user?.id) {
+      toast.error("User not logged in. Cannot create invoice.");
+      return;
+    }
     if (!isCustomerFound || !customer) {
       toast.error("Please add or select a customer before printing.");
       return;
@@ -126,12 +135,14 @@ export function BillingSection() {
     }
     setIsSaving(true);
     const invoicePayload: InvoiceDataPayload = {
+      billedById: session.user.id, // ✅ FIX 2: Add the user's ID
       customerId: customer._id,
       items: cart.map((item) => ({
+        variantId: item._id,
         name: item.product.productName,
         price: item.price,
         quantity: item.quantity,
-        mrp: item.mrp,
+        mrp: item.mrp ?? 0, // ✅ FIX 1: Provide a fallback of 0 if mrp is undefined
         gstRate: isGstEnabled ? (item.product.tax?.gst ?? 0) : 0,
         hsn: isGstEnabled ? (item.product.tax?.hsn ?? '') : '',
       })),
@@ -307,7 +318,6 @@ export function BillingSection() {
                 <SelectValue placeholder="Select Product..." />
               </SelectTrigger>
               <SelectContent>
-                {/* ✅ FIX: The client-side filter is removed because the server now sends clean data */}
                 {oecs.map((oec) => (
                   <SelectItem key={oec._id} value={oec._id}>
                     {oec.product.productName} ({oec.product.productCode})

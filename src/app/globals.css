@@ -112,6 +112,38 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* logo animation */
+
+@keyframes shine {
+  from {
+    transform: translateX(-100%) skewX(-30deg);
+  }
+  to {
+    transform: translateX(200%) skewX(-30deg);
+  }
+}
+
+.animate-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shine 7s ease-in-out infinite;
+}
+
 /* Print preview css */
 
 @media print {

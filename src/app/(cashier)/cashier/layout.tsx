@@ -1,45 +1,57 @@
-// src/app/(cashier)/cashier/layout.tsx
 "use client";
 
-import React, { useState } from "react";
-// Removed 'Menu' import as it's no longer needed for the top header
-// Removed 'Button' import if no other buttons are in the layout outside sidebar
+import React, { useState, useEffect } from "react";
 import { CashierSidebarContent } from "./_components/CashierSidebarContent";
-import { cn } from "@/lib/utils";
-import { SessionProvider } from "next-auth/react";
+import { SidebarToggle } from "@/components/admin/SidebarToggle"; // Reusing the same toggle component
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PrintPreview } from "@/components/pos/PrintPreview";
+import { useStoreDetailsStore } from "@/store/storeDetails.store";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
-interface CashierLayoutProps {
+export default function CashierLayout({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function CashierLayout({ children }: CashierLayoutProps) {
+}) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { fetchActiveStore } = useStoreDetailsStore();
+
+  // ✅ Fetch the active store details (for the logo) when the layout first loads
+  useEffect(() => {
+    fetchActiveStore();
+  }, [fetchActiveStore]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   return (
-    <SessionProvider>
-      <div className="flex h-screen overflow-hidden">
-        {/* Sidebar */}
+    // ✅ Wrap the layout in the AuthGuard for security
+    <AuthGuard role="cashier">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
         <CashierSidebarContent
           isCollapsed={isSidebarCollapsed}
-          onToggle={toggleSidebar} // Pass the toggle function here
+          onToggle={toggleSidebar}
         />
 
-        {/* Main Content Area */}
-        <div className="flex flex-col flex-1 transition-all duration-300 ease-in-out">
-          {/* Removed the <header> with the hamburger menu */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* ✅ A persistent header for the toggle button */}
+          <header className="flex items-center h-16 bg-white dark:bg-gray-950 border-b dark:border-gray-800 px-4">
+            <SidebarToggle 
+              isCollapsed={isSidebarCollapsed} 
+              onToggle={toggleSidebar} 
+            />
+          </header>
 
-          {/* Page Content */}
-          <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-            {children}
+          <main className="flex-1 overflow-y-auto p-4">
+            <QueryProvider>
+              {children}
+            </QueryProvider>
           </main>
-          <PrintPreview />
         </div>
+
+        <PrintPreview />
       </div>
-    </SessionProvider>
+    </AuthGuard>
   );
 }
