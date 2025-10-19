@@ -19,14 +19,16 @@ export function SalesOverviewChart({ data }: SalesOverviewChartProps) {
   const [isEnlarged, setIsEnlarged] = useState(false);
   const { theme } = useTheme();
 
+  // Define chart colors based on the current theme
   const chartTheme = theme === 'dark' ? {
     chartBackground: '#4a5568',
-    labelFill: '#e2e8f0'
+    labelFill: '#e2e8f0' // Light text for dark background
   } : {
     chartBackground: '#cbd5e0',
-    labelFill: '#1f2937'
+    labelFill: '#1f2937' // Dark text for light background
   };
 
+  // Filter out any data related to "Oil Expelling"
   const filteredData = data.filter(item => !item.productName.includes("Oil Expelling"));
 
   return (
@@ -37,7 +39,8 @@ export function SalesOverviewChart({ data }: SalesOverviewChartProps) {
     >
       <Card className="bg-gray-900 text-white border-gray-700 shadow-lg p-6">
         <CardHeader className="p-0">
-          <CardTitle className="text-lg font-bold">Total Items Sold</CardTitle> // ✅ FIX: Clearer title
+          {/* Using the clearer title "Total Items Sold" */}
+          <CardTitle className="text-lg font-bold">Total Items Sold</CardTitle> 
           <p className="text-sm text-gray-400">Last 7 days</p>
         </CardHeader>
         <CardContent className="h-52 mt-4 p-0">
@@ -46,7 +49,11 @@ export function SalesOverviewChart({ data }: SalesOverviewChartProps) {
               <Dialog open={isEnlarged} onOpenChange={setIsEnlarged}>
                 <DialogTrigger asChild>
                   <div className="w-full h-full cursor-pointer">
-                    <SalesRadialChart data={filteredData} chartBackground={chartTheme.chartBackground} labelFill={chartTheme.labelFill} />
+                    <SalesRadialChart 
+                      data={filteredData} 
+                      chartBackground={chartTheme.chartBackground} 
+                      labelFill={chartTheme.labelFill} 
+                    />
                   </div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl md:max-w-2xl bg-gray-900 text-white">
@@ -54,7 +61,11 @@ export function SalesOverviewChart({ data }: SalesOverviewChartProps) {
                     <DialogTitle>Sales Overview (Enlarged)</DialogTitle>
                   </DialogHeader>
                   <div className="w-full h-[500px]">
-                    <SalesRadialChart data={filteredData} chartBackground={chartTheme.chartBackground} labelFill={chartTheme.labelFill} />
+                    <SalesRadialChart 
+                      data={filteredData} 
+                      chartBackground={chartTheme.chartBackground} 
+                      labelFill={chartTheme.labelFill} 
+                    />
                   </div>
                 </DialogContent>
               </Dialog>

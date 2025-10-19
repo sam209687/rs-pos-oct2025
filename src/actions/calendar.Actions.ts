@@ -37,7 +37,7 @@ export async function getIndianHolidays(): Promise<Holiday[]> {
     const data = await response.json();
 
     // ✅ ADD THIS LOG to see the raw response from Google
-    console.log("--- Raw Response from Google API ---", JSON.stringify(data, null, 2));
+    // console.log("--- Raw Response from Google API ---", JSON.stringify(data, null, 2));
 
     // Ensure data.items exists before trying to map it
     const holidays: Holiday[] = data.items?.map((event: any) => ({

@@ -10,6 +10,8 @@ export interface IVariant extends Document {
   product: Types.ObjectId;
   variantVolume: number;
   unit: Types.ObjectId;
+  unitConsumed: number; // ✅ NEW: Added to interface
+  unitConsumedUnit: Types.ObjectId; // ✅ NEW: Added to interface
   variantColor?: string;
   price: number;
   mrp: number;
@@ -18,17 +20,18 @@ export interface IVariant extends Document {
   stockAlertQuantity: number;
   image?: string;
   qrCode?: string;
-  packingCharges: number; // ✅ NEW: Packing charges field
-  laborCharges: number; // ✅ NEW: Labor charges field
-  electricityCharges: number; // ✅ NEW: Electricity charges field
-  others1: number; // ✅ NEW: Other 1 charges field
-  others2: number; // ✅ NEW: Other 2 charges field
+  packingCharges: number;
+  laborCharges: number;
+  electricityCharges: number;
+  others1: number;
+  others2: number;
   createdAt: Date;
 }
 
-export interface IPopulatedVariant extends Omit<IVariant, 'product' | 'unit'> {
+export interface IPopulatedVariant extends Omit<IVariant, 'product' | 'unit' | 'unitConsumedUnit'> {
   product: IPopulatedProduct;
   unit: IUnit;
+  unitConsumedUnit: IUnit;
 }
 
 const VariantSchema: Schema = new Schema(
@@ -47,6 +50,17 @@ const VariantSchema: Schema = new Schema(
       ref: 'Unit',
       required: true,
     },
+    // ✅ FIX: Added the missing schema field definition
+    unitConsumed: {
+      type: Number,
+      required: true,
+    },
+    unitConsumedUnit: {
+      type: Types.ObjectId,
+      ref: 'Unit',
+      required: true,
+    },
+    // End of FIX
     variantColor: {
       type: String,
     },
@@ -75,11 +89,11 @@ const VariantSchema: Schema = new Schema(
     qrCode: {
       type: String,
     },
-    packingCharges: { type: Number, default: 0 }, // ✅ NEW: Packing charges
-    laborCharges: { type: Number, default: 0 }, // ✅ NEW: Labor charges
-    electricityCharges: { type: Number, default: 0 }, // ✅ NEW: Electricity charges
-    others1: { type: Number, default: 0 }, // ✅ NEW: Other 1 charges
-    others2: { type: Number, default: 0 }, // ✅ NEW: Other 2 charges
+    packingCharges: { type: Number, default: 0 },
+    laborCharges: { type: Number, default: 0 },
+    electricityCharges: { type: Number, default: 0 },
+    others1: { type: Number, default: 0 },
+    others2: { type: Number, default: 0 },
   },
   {
     timestamps: true,

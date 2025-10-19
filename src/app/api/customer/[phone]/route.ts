@@ -1,4 +1,5 @@
 // src/app/api/customer/[phone]/route.ts
+
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Customer from '@/lib/models/customer';
@@ -9,7 +10,10 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const { phone } = params;
+    
+    // ✅ FIX: Access 'phone' directly from the destructured 'params' object
+    // This resolves the Next.js dynamic API sync/async warning.
+    const phone = params.phone; 
 
     if (!phone || !/^\d{10}$/.test(phone)) {
       return NextResponse.json({ message: 'A valid 10-digit phone number is required.' }, { status: 400 });

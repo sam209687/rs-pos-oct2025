@@ -116,6 +116,8 @@ export const variantSchema = z.object({
   product: z.string().min(1, "Product is required."),
   variantVolume: z.coerce.number().min(0, "Variant volume must be a non-negative number."),
   unit: z.string().min(1, "Unit is required."),
+  unitConsumed: z.coerce.number().min(0, "Unit Consumed must be a non-negative number."),
+  unitConsumedUnit: z.string().min(1, "Unit Consumed Unit is required."),
   variantColor: z.string().optional(),
   price: z.coerce.number().min(0, "Price must be a non-negative number."),
   mrp: z.coerce.number().min(0, "MRP must be a non-negative number."),

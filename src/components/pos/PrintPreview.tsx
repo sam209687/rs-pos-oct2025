@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { usePrintStore } from '@/store/printStore';
-import { useStoreDetailsStore } from '@/store/storeDetailsStore';
+// import { useStoreDetailsStore } from '@/store/storeDetailsStore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import QRCode from 'qrcode';
+import { useStoreDetailsStore } from '@/store/storeDetails.store';
 
 export function PrintPreview() {
   const { isModalOpen, invoiceData, closeModal } = usePrintStore();

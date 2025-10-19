@@ -10,6 +10,8 @@ export interface VariantData {
   product: string;
   variantVolume: number;
   unit: string;
+  unitConsumed: number; // ✅ NEW: Added to interface
+  unitConsumedUnit: string; // ✅ NEW: Added to interface
   variantColor?: string;
   price: number;
   mrp: number;
@@ -29,7 +31,7 @@ export interface VariantData {
 export const getVariants = async () => {
   try {
     await connectToDatabase();
-    const variants = await Variant.find({}).populate("product unit").lean();
+    const variants = await Variant.find({}).populate("product unit unitConsumedUnit").lean();
     return { success: true, data: JSON.parse(JSON.stringify(variants)) };
   } catch (error) {
     console.error("Failed to fetch variants:", error);
@@ -41,7 +43,7 @@ export const getVariants = async () => {
 export const getVariantById = async (id: string) => {
   try {
     await connectToDatabase();
-    const variant = await Variant.findById(id).populate("product unit").lean();
+    const variant = await Variant.findById(id).populate("product unit unitConsumedUnit").lean();
     if (!variant) {
       return { success: false, message: "Variant not found." };
     }

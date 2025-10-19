@@ -77,6 +77,8 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       product: initialData?.product._id || "",
       variantVolume: initialData?.variantVolume || 0,
       unit: initialData?.unit._id || "",
+      unitConsumed: initialData?.unitConsumed || 0,
+      unitConsumedUnit: initialData?.unitConsumedUnit?._id || "",
       variantColor: initialData?.variantColor || "",
       price: initialData?.price || 0,
       mrp: initialData?.mrp || 0,
@@ -113,9 +115,9 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      // ✅ FIX: The price of variant is now a calculated field
       const fieldsToWatch = [
         "product",
+        "unitConsumed",
         "packingCharges",
         "laborCharges",
         "electricityCharges",
@@ -124,13 +126,16 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       ];
       
       if (fieldsToWatch.includes(name as string)) {
-        const basePrice = (productDetails.sellingPrice || 0);
-        const newPrice = basePrice + 
+        const sellingPrice = (productDetails.sellingPrice || 0);
+        const unitConsumed = (Number(value.unitConsumed) || 0);
+        
+        // Price = (Unit consumed * Selling Price) + Charges
+        const newPrice = (unitConsumed * sellingPrice) + 
                          (Number(value.packingCharges) || 0) + 
                          (Number(value.laborCharges) || 0) + 
                          (Number(value.electricityCharges) || 0) +
-                         (Number(value.others1) || 0) +
-                         (Number(value.others2) || 0);
+                         (Number(value.others1) || 0) + 
+                         (Number(value.others2) || 0); 
         form.setValue("price", newPrice);
       }
 
@@ -238,6 +243,8 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
         electricityCharges: Number(values.electricityCharges),
         others1: Number(values.others1),
         others2: Number(values.others2),
+        unitConsumed: Number(values.unitConsumed),
+        unitConsumedUnit: values.unitConsumedUnit,
         image: imagePath,
         qrCode: qrCodePath,
       };
@@ -269,14 +276,17 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
     <>
       <style>{numberInputStyles}</style>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+
+          {/* Product Details Section */}
+          <h2 className="text-xl font-semibold text-gray-700">Product Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <FormField
               control={form.control}
               name="product"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Product</FormLabel>
+                  <FormLabel>Select Product</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
@@ -306,7 +316,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               </FormControl>
             </FormItem>
             <FormItem>
-              <FormLabel>Product Price</FormLabel>
+              <FormLabel>Purchase Price</FormLabel>
               <FormControl>
                 <Input
                   type="number"
@@ -326,8 +336,12 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               </FormControl>
             </FormItem>
           </div>
-          <Separator className="my-4" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Separator className="my-6" />
+
+          {/* Variant and Consumption Details Section */}
+          <h2 className="text-xl font-semibold text-gray-700">Variant and Material Details</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Row 1: Variant Volume and Unit */}
             <FormField
               control={form.control}
               name="variantVolume"
@@ -353,7 +367,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               name="unit"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unit</FormLabel>
+                  <FormLabel>Variant Unit</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
@@ -376,6 +390,59 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                 </FormItem>
               )}
             />
+            
+            {/* Row 2: Unit Consumed and Unit */}
+            <FormField
+              control={form.control}
+              name="unitConsumed"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unit Consumed (for this variant)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      disabled={isPending}
+                      className={numberInputStyles}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="unitConsumedUnit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Consumed Unit</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isPending}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {units.map((unit: IUnit) => (
+                        <SelectItem key={unit._id} value={unit._id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               control={form.control}
               name="variantColor"
@@ -394,13 +461,18 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <Separator className="my-6" />
+
+          {/* Pricing Details Section */}
+          <h2 className="text-xl font-semibold text-gray-700">Pricing and Inventory</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end  p-4 rounded-lg border">
+            {/* Calculated Price */}
             <FormField
               control={form.control}
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price of Variant</FormLabel>
+                  <FormLabel className="font-bold text-blue-700">Price of Variant (Calculated Field)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -408,27 +480,33 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                       {...field}
                       onWheel={(e) => e.currentTarget.blur()}
                       readOnly={true}
-                      className={numberInputStyles}
+                      disabled={true}
+                      className={`${numberInputStyles} bg-blue-50 border-blue-300  font-bold`}
                     />
                   </FormControl>
+                  <span className="text-xs text-gray-500 block mt-1">
+                    Calculated as: (Consumed Unit * Selling Price) + Total Charges.
+                  </span>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {/* Discount Display */}
             <div className="flex flex-col space-y-2">
-              <p className="text-sm text-muted-foreground">Discount</p>
-              <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold">
-                  {form.watch("discount")}%
+              <p className="text-sm font-medium text-muted-foreground">Calculated Discount</p>
+              <div className="flex items-center space-x-2 h-10">
+                <span className="text-2xl font-extrabold text-green-600">
+                  {form.watch("discount") || 0}%
                 </span>
               </div>
             </div>
+            {/* MRP Input */}
             <FormField
               control={form.control}
               name="mrp"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>MRP</FormLabel>
+                  <FormLabel>Maximum Retail Price (MRP)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -444,6 +522,8 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             />
           </div>
+          
+          {/* Stock Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -484,6 +564,13 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             />
           </div>
+          <Separator className="my-6" />
+
+          {/* Charges Section */}
+          <h2 className="text-xl font-semibold text-gray-700">Operational Charges</h2>
+          <span className="text-sm text-gray-500 block mb-4">
+            These fields contribute to the calculated **Price of Variant**.
+          </span>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
              <FormField
               control={form.control}
@@ -551,7 +638,11 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Separator className="my-6" />
+
+          {/* Media Section */}
+          <h2 className="text-xl font-semibold text-gray-700">Media and Identification</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
               name="image"
@@ -566,7 +657,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                     />
                   </FormControl>
                   {imagePreview && (
-                    <div className="relative w-48 h-48 mt-2">
+                    <div className="relative w-48 h-48 mt-2 border rounded-lg p-1">
                       <Image
                         src={imagePreview}
                         alt="Image Preview"
@@ -582,7 +673,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                           setImageFile(null);
                           form.setValue("image", undefined);
                         }}
-                        className="absolute top-0 right-0 p-1"
+                        className="absolute top-0 right-0 p-1 bg-white rounded-full shadow-md"
                       >
                         <XCircle className="h-4 w-4 text-red-500" />
                       </Button>
@@ -595,19 +686,20 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
             <div>
               <FormLabel>QR Code</FormLabel>
               <p className="text-sm text-muted-foreground mb-2">
-                Generate or upload a QR code.
+                Generate or upload a QR code for quick scanning.
               </p>
               <div className="flex space-x-2">
                 <Button
                   type="button"
                   onClick={onGenerateQrCode}
                   disabled={isPending}
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   <QrCode className="mr-2 h-4 w-4" /> Generate QR Code
                 </Button>
               </div>
               {qrCodePreview && (
-                <div className="relative w-48 h-48 mt-2">
+                <div className="relative w-48 h-48 mt-4 border rounded-lg p-1">
                   <Image
                     src={qrCodePreview}
                     alt="QR Code Preview"
@@ -622,7 +714,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                       setQrCodePreview(null);
                       form.setValue("qrCode", undefined);
                     }}
-                    className="absolute top-0 right-0 p-1"
+                    className="absolute top-0 right-0 p-1 bg-white rounded-full shadow-md"
                   >
                     <XCircle className="h-4 w-4 text-red-500" />
                   </Button>
@@ -630,7 +722,8 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
               )}
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-8">
+          
+          <div className="flex justify-end gap-2 pt-8">
             <Button
               type="button"
               variant="outline"
@@ -639,7 +732,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="min-w-[150px]">
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,21 +1,23 @@
+// src/lib/models/invoice.ts
+
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { IUser } from './user'; // Assuming you have IUser
-import { ICustomer } from './customer'; // Assuming you have ICustomer
+import { IUser } from './user'; 
+import { ICustomer } from './customer'; 
 
 export interface IInvoiceItem {
   name: string;
   price: number;
   quantity: number;
+  variantId: Types.ObjectId | string; // FIX: Add variantId to interface
   mrp?: number;
   gstRate?: number;
   hsn?:string;
 }
 
-// ✅ FIX: This interface no longer extends Document. It's a plain object.
 export interface IInvoice {
   _id: string;
   invoiceNumber: string;
-  customer: ICustomer | Types.ObjectId | string; // Allow for populated object
+  customer: ICustomer | Types.ObjectId | string;
   items: IInvoiceItem[];
   subtotal: number;
   discount: number;
@@ -25,7 +27,7 @@ export interface IInvoice {
   paymentMethod: 'cash' | 'upi' | 'card';
   createdAt: Date;
   updatedAt: Date;
-  billedBy: Partial<IUser> | Types.ObjectId | string; // Allow for populated object
+  billedBy: Partial<IUser> | Types.ObjectId | string;
   status: 'active' | 'cancelled';
 }
 
@@ -33,11 +35,13 @@ const InvoiceItemSchema: Schema = new Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true },
+  variantId: { type: Types.ObjectId, ref: 'Variant', required: true }, // FIX: Add variantId to Schema
   mrp: { type: Number },
   gstRate: { type: Number },
    hsn: { type: String },
 }, { _id: false });
 
+// This line is now correct, using new Schema once.
 const InvoiceSchema: Schema = new Schema({
   invoiceNumber: { type: String, required: true, unique: true },
   customer: { type: Types.ObjectId, ref: 'Customer', required: true },
