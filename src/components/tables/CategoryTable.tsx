@@ -42,47 +42,59 @@ export function CategoryTable({ initialCategories }: CategoryTableProps) {
 
   return (
     <div className="space-y-4">
+        {/* Responsive Search Input */}
         <Input 
             placeholder="Search by category name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
+            className="w-full md:max-w-sm"
         />
-        <div className="rounded-md border">
+        
+        {/* Table Wrapper: Added overflow-x-auto for horizontal scrolling insurance */}
+        <div className="rounded-md border overflow-x-auto">
         <Table>
             <TableHeader>
             <TableRow>
-                <TableHead className="w-[80px]">S/No</TableHead>
-                <TableHead>Category Name</TableHead>
-                <TableHead className="text-right w-[120px]">Actions</TableHead>
+                {/* S/No column hidden on very small screens */}
+                <TableHead className="w-[60px] hidden sm:table-cell">S/No</TableHead>
+                {/* Category Name column ensured to take available space */}
+                <TableHead className="min-w-[150px]">Category Name</TableHead>
+                
+                {/* 👇 FIX 1: Increased minimum width and removed unnecessary right padding */}
+                <TableHead className="text-right w-[100px] min-w-[90px] pr-2 sm:pr-4">Actions</TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
             {filteredCategories.length > 0 ? (
                 filteredCategories.map((category, index) => (
                 <TableRow key={category._id.toString()}>
-                    <TableCell>{index + 1}</TableCell>
+                    {/* S/No cell hidden on very small screens */}
+                    <TableCell className="hidden sm:table-cell">{index + 1}</TableCell>
                     <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                        <Button variant="outline" size="icon" asChild>
-                           <Link href={`/admin/category/edit/${category._id.toString()}`}>
-                                <Pencil className="h-4 w-4" />
-                           </Link>
-                        </Button>
-                        <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDelete(category._id.toString())}
-                        disabled={isDeleting && deletingId === category._id.toString()}
-                        >
-                        {isDeleting && deletingId === category._id.toString() ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Trash2 className="h-4 w-4" />
-                        )}
-                        </Button>
-                    </div>
+                    
+                    {/* 👇 FIX 2: Reduced right padding on the cell */}
+                    <TableCell className="text-right pr-2 sm:pr-4">
+                        {/* Compact Action Buttons (h-8 w-8 = 32px) with gap-1 (4px), total width needed is ~70px */}
+                        <div className="flex items-center justify-end gap-1">
+                            <Button variant="outline" size="icon" className="h-8 w-8" asChild>
+                            <Link href={`/admin/category/edit/${category._id.toString()}`}>
+                                    <Pencil className="h-4 w-4" />
+                            </Link>
+                            </Button>
+                            <Button
+                            variant="destructive"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDelete(category._id.toString())}
+                            disabled={isDeleting && deletingId === category._id.toString()}
+                            >
+                            {isDeleting && deletingId === category._id.toString() ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="h-4 w-4" />
+                            )}
+                            </Button>
+                        </div>
                     </TableCell>
                 </TableRow>
                 ))

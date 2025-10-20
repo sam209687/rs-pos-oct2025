@@ -26,7 +26,7 @@ export async function getSalesDataByVariant(
   try {
     await connectToDatabase();
 
-    console.log("📦 [getSalesDataByVariant] Connected to DB");
+    // console.log("📦 [getSalesDataByVariant] Connected to DB");
 
     const matchStage =
       fromDate && toDate
@@ -59,7 +59,7 @@ export async function getSalesDataByVariant(
       { $sort: { totalRevenue: -1 } },
     ]);
 
-    console.log("✅ [getSalesDataByVariant] Results:", salesData);
+    // console.log("✅ [getSalesDataByVariant] Results:", salesData);
 
     return { success: true, data: salesData as VariantSalesData[] };
   } catch (error: any) {

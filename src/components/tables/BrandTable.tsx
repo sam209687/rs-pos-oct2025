@@ -36,6 +36,7 @@ export function BrandTable({ initialBrands }: BrandTableProps) {
     if (window.confirm("Are you sure you want to delete this brand?")) {
       setDeletingId(brandId);
       startDeleteTransition(() => {
+        // Assuming deleteBrand is an async function that handles API call and state update
         deleteBrand(brandId, imageUrl).finally(() => setDeletingId(null));
       });
     }
@@ -43,29 +44,34 @@ export function BrandTable({ initialBrands }: BrandTableProps) {
 
   return (
     <div className="space-y-4">
+        {/* Responsive Search Input: Takes full width on small screens and limits width on larger screens */}
         <Input 
             placeholder="Search by brand name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
+            className="w-full md:max-w-sm" // w-full on mobile, max-w-sm on md and up
         />
-        <div className="rounded-md border">
+        
+        {/* Responsive Table Wrapper: Allows horizontal scrolling if the table content exceeds screen width */}
+        <div className="rounded-md border overflow-x-auto">
         <Table>
             <TableHeader>
             <TableRow>
-                <TableHead className="w-[80px]">S/No</TableHead>
-                <TableHead className="w-[100px]">Image</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-right w-[120px]">Actions</TableHead>
+                {/* S/No and Image hidden on very small screens for better fit */}
+                <TableHead className="w-[60px] hidden sm:table-cell">S/No</TableHead>
+                <TableHead className="w-[80px] hidden sm:table-cell">Image</TableHead> 
+                <TableHead className="min-w-[150px]">Name</TableHead> {/* Ensure minimum width for the name */}
+                {/* Action column is kept on the right, compact size */}
+                <TableHead className="text-right w-[100px] pr-4">Actions</TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
             {filteredBrands.length > 0 ? (
                 filteredBrands.map((brand, index) => (
-                // FIX: Convert Mongoose ObjectId to string for the key prop
                 <TableRow key={brand._id.toString()}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">{index + 1}</TableCell>
+                    {/* Image hidden on very small screens */}
+                    <TableCell className="hidden sm:table-cell">
                     <Image
                         src={brand.imageUrl}
                         alt={brand.name}
@@ -75,17 +81,18 @@ export function BrandTable({ initialBrands }: BrandTableProps) {
                     />
                     </TableCell>
                     <TableCell className="font-medium">{brand.name}</TableCell>
-                    <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                        <Button variant="outline" size="icon" asChild>
-                           <Link href={`/admin/brand/edit/${brand._id}`}> {/* Edit page not implemented */}
+                    <TableCell className="text-right pr-4">
+                    {/* Compact Action Buttons with size="icon" and reduced gap */}
+                    <div className="flex items-center justify-end gap-1">
+                        <Button variant="outline" size="icon" className="h-8 w-8" asChild>
+                           <Link href={`/admin/brand/edit/${brand._id}`}>
                                 <Pencil className="h-4 w-4" />
                            </Link>
                         </Button>
                         <Button
                         variant="destructive"
                         size="icon"
-                        // FIX: Convert Mongoose ObjectId to string for the function argument
+                        className="h-8 w-8" // Smaller size for mobile
                         onClick={() => handleDelete(brand._id.toString(), brand.imageUrl)}
                         disabled={isDeleting && deletingId === brand._id.toString()}
                         >
@@ -101,7 +108,8 @@ export function BrandTable({ initialBrands }: BrandTableProps) {
                 ))
             ) : (
                 <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                {/* colSpan is reduced from 4 to 3 on mobile (sm:4) since 2 columns are hidden */}
+                <TableCell colSpan={4} className="h-24 text-center sm:col-span-4">
                     No brands found.
                 </TableCell>
                 </TableRow>

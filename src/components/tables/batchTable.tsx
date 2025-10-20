@@ -65,7 +65,7 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
     const printWindow = window.open('', '', 'height=600,width=800');
     if (!printWindow) return;
 
-    const reportContent = renderReport();
+    // We no longer need to call renderReport here, just ensure the styles are good
     const contentString = `
       <!DOCTYPE html>
       <html>
@@ -118,6 +118,7 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
     // New calculation for Oil Price / Ltr
     const oilPricePerLtr = purchasePricePerKg * roundedSeedsConsumed;
     
+    // Fallback if product or sellingPrice is null/undefined
     const sellingPricePerLtr = (product?.sellingPrice ?? 0) / 2;
     const priceOfSeedsConsumed = sellingPricePerLtr * roundedSeedsConsumed;
     
@@ -131,10 +132,10 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
         <div className="space-y-2 mb-6">
           <p><strong>Date:</strong> {date}</p>
           <p><strong>Vendor Name:</strong> {vendorName}</p>
-          <p><strong>Product Name:</strong> {product.productName}</p>
+          <p><strong>Product Name:</strong> {product?.productName}</p> {/* Use optional chaining */}
           <p><strong>Batch Number:</strong> <span className="text-xl font-extrabold">{batchNumber}</span></p>
         </div>
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto for table on small screens */}
           <Table>
             <TableHeader>
               <TableRow>
@@ -182,25 +183,29 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
             </TableBody>
           </Table>
         </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <Button onClick={handlePrint}>Print</Button>
-          <Button variant="outline" onClick={() => setSelectedBatchForReport(null)}>Close</Button>
-        </div>
+        {/* Buttons are outside the print area so they are not duplicated in the print content string */}
+        {/* They are placed in the DialogContent wrapper which already contains print-related classes */}
       </div>
     );
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Responsive Header:
+        - On small screens (sm:), the items will stack (flex-col) and the search input will take full width (w-full).
+        - On medium screens and up (md:), they will be side-by-side (md:flex-row) and space-between (justify-between).
+      */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <Input
           placeholder="Search by batch, vendor or product name..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
+          // On mobile, take full width. On medium screens, limit the width.
+          className="w-full md:max-w-sm"
         />
-        <Link href="/admin/batch/add-batch" onClick={handleAddBatchClick}>
-          <Button disabled={isPending}>
+        <Link href="/admin/batch/add-batch" onClick={handleAddBatchClick} className="w-full md:w-auto">
+          {/* Ensure the button also takes full width on small screens for better touch targets */}
+          <Button disabled={isPending} className="w-full md:w-auto">
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -215,41 +220,52 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
           </Button>
         </Link>
       </div>
-      <div className="rounded-md border">
+
+      {/* Responsive Table:
+        - The `overflow-x-auto` wrapper ensures the table can be horizontally scrolled on small screens if it's too wide.
+      */}
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">S/No</TableHead>
-              <TableHead>Batch Number</TableHead>
-              <TableHead>Vendor Name</TableHead>
-              <TableHead>Product Name</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead className="text-right w-[120px]">Actions</TableHead>
+              {/* Hide S/No on small screens to save space */}
+              <TableHead className="w-[80px] hidden sm:table-cell">S/No</TableHead>
+              {/* Always show Batch Number and Product Name */}
+              <TableHead className="min-w-[120px]">Batch Number</TableHead>
+              {/* Show Vendor Name on medium screens and up */}
+              <TableHead className="hidden md:table-cell min-w-[150px]">Vendor Name</TableHead>
+              <TableHead className="min-w-[150px]">Product Name</TableHead>
+              {/* Show Quantity and Price on small screens, but give them a minimum width */}
+              <TableHead className="min-w-[80px]">Quantity</TableHead>
+              <TableHead className="hidden sm:table-cell min-w-[100px]">Price</TableHead>
+              {/* Actions column: always present, but ensure buttons are compact */}
+              <TableHead className="text-right w-[120px] pr-4">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredBatches.length > 0 ? (
               filteredBatches.map((batch: IPopulatedBatch, index: number) => (
                 <TableRow key={batch._id.toString()}>
-                  <TableCell>{index + 1}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{index + 1}</TableCell>
                   <TableCell className="font-medium">{batch.batchNumber}</TableCell>
-                  <TableCell>{batch.vendorName}</TableCell>
+                  <TableCell className="hidden md:table-cell">{batch.vendorName}</TableCell>
                   <TableCell>{batch.product?.productName}</TableCell>
                   <TableCell>
                     {batch.qty} kg
                   </TableCell>
-                  <TableCell>₹ {(batch.price ?? 0).toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <TableCell className="hidden sm:table-cell">₹ {(batch.price ?? 0).toFixed(2)}</TableCell>
+                  <TableCell className="text-right pr-4">
+                    {/* Compact Action Buttons with `size="icon"` */}
+                    <div className="flex items-center justify-end gap-1">
                       <Link href={`/admin/batch/edit/${batch._id}`}>
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" className="h-8 w-8">
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
                       <Button
                         variant="destructive"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleDelete(batch._id.toString())}
                         disabled={isDeleting && deletingId === batch._id.toString()}
                       >
@@ -262,6 +278,7 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => handleOpenReport(batch)}
                         disabled={!batch.oilExpelled}
                         title={!batch.oilExpelled ? "Cannot generate report. Oil Expelled field is empty." : "Generate Report"}
@@ -282,6 +299,11 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
           </TableBody>
         </Table>
       </div>
+      
+      {/* Responsive Dialog:
+        - sm:max-w-[800px] ensures it doesn't get too wide on large screens.
+        - max-h-[90vh] and overflow-y-auto ensure it fits on smaller screens and is scrollable.
+      */}
       <Dialog open={!!selectedBatchForReport} onOpenChange={(open) => !open && setSelectedBatchForReport(null)}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -289,13 +311,15 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
           </DialogHeader>
           <div className="no-print">
             <p className="text-sm text-muted-foreground">This is a summary of the batch details and key metrics.</p>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button onClick={handlePrint} className="no-print">Print</Button>
-              <Button variant="outline" onClick={() => setSelectedBatchForReport(null)} className="no-print">Close</Button>
-            </div>
           </div>
           <Separator />
+          {/* The report content is rendered here */}
           {renderReport()}
+          {/* Place print/close buttons outside the renderReport function but inside DialogContent */}
+          <div className="flex justify-end gap-2 mt-4 no-print">
+            <Button onClick={handlePrint} className="no-print">Print</Button>
+            <Button variant="outline" onClick={() => setSelectedBatchForReport(null)} className="no-print">Close</Button>
+          </div>
         </DialogContent>
       </Dialog>
       <style jsx global>
@@ -306,6 +330,12 @@ export function BatchTable({ initialBatches }: BatchTableProps) {
             }
             #report-content, #report-content * {
               display: block !important;
+            }
+            /* Add some spacing for better print readability */
+            #report-content {
+              width: 100%;
+              padding: 0;
+              margin: 0;
             }
             .no-print {
               display: none !important;

@@ -1,6 +1,6 @@
 // src/app/api/variants/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { getVariantById, updateVariant, deleteVariant } from '@/actions/variant.actions';
+import { getVariantById, updateVariant, deleteVariant, VariantData } from '@/actions/variant.actions'; // Ensure VariantData is imported
 
 // Define params type
 interface Params {
@@ -25,15 +25,27 @@ export async function PUT(request: Request, { params }: Params) {
   try {
     const { id } = params;
     const formData = await request.formData();
-    // ✅ CORRECTED: Manually extract fields from FormData to match VariantData
-    const data = {
+    
+    // ✅ FIX: Extract ALL fields required by VariantData interface
+    const data: VariantData = {
       product: formData.get('product') as string,
       variantVolume: Number(formData.get('variantVolume')),
       unit: formData.get('unit') as string,
+      unitConsumed: Number(formData.get('unitConsumed')), // ADDED
+      unitConsumedUnit: formData.get('unitConsumedUnit') as string, // ADDED
       variantColor: formData.get('variantColor') as string,
       price: Number(formData.get('price')),
       mrp: Number(formData.get('mrp')),
+      discount: Number(formData.get('discount')), // ADDED
+      stockQuantity: Number(formData.get('stockQuantity')), // ADDED
+      stockAlertQuantity: Number(formData.get('stockAlertQuantity')), // ADDED
       image: formData.get('image') as string,
+      qrCode: formData.get('qrCode') as string, // ADDED
+      packingCharges: Number(formData.get('packingCharges')), // ADDED
+      laborCharges: Number(formData.get('laborCharges')), // ADDED
+      electricityCharges: Number(formData.get('electricityCharges')), // ADDED
+      others1: Number(formData.get('others1')), // ADDED
+      others2: Number(formData.get('others2')), // ADDED
     };
     
     const result = await updateVariant(id, data);

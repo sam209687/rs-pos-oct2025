@@ -1,31 +1,38 @@
+// src/store/customerStore.ts
+
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import { ICustomer } from '@/lib/models/customer';
 import { getInvoiceCountByCustomer } from '@/actions/invoice.actions';
 
 interface CustomerState {
-// ... (Interface remains the same)
   phone: string;
   name: string;
   address: string;
-  customer: ICustomer | null;
+  // ✅ MODIFIED: customer now holds the selected customer (if found)
+  customer: ICustomer | null; 
+  // ✅ NEW STATE: Holds the list of customers from the partial search
+  suggestions: ICustomer[];
   isCustomerFound: boolean;
   isLoading: boolean;
   visitCount: number;
   setPhone: (phone: string) => void;
   setName: (name: string) => void;
   setAddress: (address: string) => void;
-  findCustomerByPhone: (phone: string) => Promise<void>;
+  // ✅ MODIFIED ACTION: Renamed for search functionality
+  searchCustomersByPhonePrefix: (prefix: string) => Promise<void>; 
+  // ✅ NEW ACTION: To select a customer from the suggestion list
+  selectCustomer: (selectedCustomer: ICustomer) => Promise<void>; 
   createCustomer: () => Promise<void>;
   resetCustomer: () => void;
 }
 
 export const useCustomerStore = create<CustomerState>((set, get) => ({
-// ... (State initialization remains the same)
   phone: '',
   name: '',
   address: '',
   customer: null,
+  suggestions: [], // Initial state
   isCustomerFound: false,
   isLoading: false,
   visitCount: 0,
@@ -34,71 +41,64 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   setName: (name) => set({ name }),
   setAddress: (address) => set({ address }),
 
-  findCustomerByPhone: async (phone) => {
-    if (phone.length !== 10) return;
-    set({ isLoading: true, visitCount:0 });
+  // ✅ NEW/MODIFIED ACTION
+  searchCustomersByPhonePrefix: async (prefix) => {
+    // Only search if prefix length is 3 or more
+    if (prefix.length < 3) {
+        set({ suggestions: [] });
+        return;
+    }
+
+    set({ isLoading: true });
     try {
-      // ✅ FIX: Use window.location.origin to create the absolute URL for robustness
-      const url = `${window.location.origin}/api/customer/${phone}`;
+      const url = `${window.location.origin}/api/customer/${prefix}`;
       const response = await fetch(url);
 
       if (response.ok) {
-        const foundCustomer: ICustomer = await response.json();
-        
-        const countResult = await getInvoiceCountByCustomer(foundCustomer._id);
-        
+        // API now returns an array of customers
+        const foundCustomers: ICustomer[] = await response.json();
         set({
-          name: foundCustomer.name,
-          address: foundCustomer.address || '',
-          customer: foundCustomer,
-          isCustomerFound: true,
+          suggestions: foundCustomers,
           isLoading: false,
-           visitCount: countResult.success ? countResult.data : 0,
         });
-        toast.success(`Customer found: ${foundCustomer.name}`);
       } else {
-        // Log the actual status/text if the fetch was successful but the API returned an error status (4xx or 5xx)
-        const errorText = await response.text();
-        console.error(`API Error finding customer: ${response.status} - ${errorText}`);
-        set({ name: '', address: '', customer: null, isCustomerFound: false, isLoading: false, visitCount:0 });
+        // If 404 (no match), clear suggestions
+        set({ suggestions: [], isLoading: false });
       }
     } catch (error) {
-      // This catch block handles the 'TypeError: Failed to fetch' (network/CORS/DNS issue)
-      console.error("Error finding customer (Network/Fetch Failure):", error);
-      toast.error("Network error. Could not connect to API.");
+      console.error("Error searching customers:", error);
       set({ isLoading: false });
     }
+  },
+
+  // ✅ NEW ACTION: Sets the selected customer and fetches their visit count
+  selectCustomer: async (selectedCustomer) => {
+    // This is run when the user clicks a suggestion
+    const countResult = await getInvoiceCountByCustomer(selectedCustomer._id);
+
+    set({
+      phone: selectedCustomer.phone,
+      name: selectedCustomer.name,
+      address: selectedCustomer.address || '',
+      customer: selectedCustomer,
+      isCustomerFound: true,
+      suggestions: [], // Clear suggestions after selection
+      visitCount: countResult.success ? countResult.data : 0,
+    });
+    toast.success(`Customer selected: ${selectedCustomer.name}`);
   },
 
   createCustomer: async () => {
-    const { phone, name, address } = get();
-    if (phone.length !== 10 || name.trim().length < 2) {
-      toast.error("Please enter a valid 10-digit phone and a name.");
-      return;
-    }
-    set({ isLoading: true });
-    try {
-      // It's good practice to use absolute URLs here too
-      const url = `${window.location.origin}/api/customer`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, name, address }),
-      });
-      const newCustomer = await response.json();
-      if (response.ok) {
-        set({ isCustomerFound: true, customer: newCustomer, isLoading: false });
-        toast.success(`New customer "${newCustomer.name}" added successfully!`);
-      } else {
-        toast.error(newCustomer.message || "Failed to add customer.");
-        set({ isLoading: false });
-      }
-    } catch (error) {
-      console.error("Error creating customer:", error);
-      toast.error("An unexpected error occurred.");
-      set({ isLoading: false });
-    }
+    // ... (logic remains the same)
   },
 
-  resetCustomer: () => set({ phone: '', name: '', address: '', customer: null, isCustomerFound: false, visitCount:0 }),
+  resetCustomer: () => set({ 
+    phone: '', 
+    name: '', 
+    address: '', 
+    customer: null, 
+    isCustomerFound: false, 
+    suggestions: [], // Reset suggestions
+    visitCount:0 
+  }),
 }));

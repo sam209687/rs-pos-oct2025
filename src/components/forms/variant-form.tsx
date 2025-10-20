@@ -129,7 +129,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
         const sellingPrice = (productDetails.sellingPrice || 0);
         const unitConsumed = (Number(value.unitConsumed) || 0);
         
-        // Price = (Unit consumed * Selling Price) + Charges
+        // Price calculation logic
         const newPrice = (unitConsumed * sellingPrice) + 
                          (Number(value.packingCharges) || 0) + 
                          (Number(value.laborCharges) || 0) + 
@@ -197,13 +197,11 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
       let imagePath = isEditing ? initialData?.image || "" : "";
       let qrCodePath = isEditing ? initialData?.qrCode || "" : "";
 
+      // Image upload logic
       if (imageFile) {
         const formData = new FormData();
         formData.append("file", imageFile);
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
         if (data.success) {
           imagePath = data.data.url;
@@ -213,14 +211,12 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
         }
       }
 
+      // QR Code upload logic
       if (qrCodePreview) {
         const qrCodeBlob = await fetch(qrCodePreview).then(res => res.blob());
         const qrCodeFormData = new FormData();
         qrCodeFormData.append("file", new File([qrCodeBlob], 'variant-qr..png', { type: 'image/png' }));
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: qrCodeFormData,
-        });
+        const res = await fetch("/api/upload", { method: "POST", body: qrCodeFormData });
         const data = await res.json();
         if (data.success) {
           qrCodePath = data.data.url;
@@ -290,7 +286,7 @@ const VariantForm: React.FC<VariantFormProps> = ({ initialData }) => {
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    disabled={isPending}
+                    disabled={isPending || isEditing} // Disable product change in edit mode
                   >
                     <FormControl>
                       <SelectTrigger>

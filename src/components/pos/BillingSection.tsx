@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-// ✅ FIX 2: Import the useSession hook
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Restored Popover imports
+import { Loader2, ShoppingCart } from "lucide-react"; // Restored Icon imports
+
 import { usePosStore } from "@/store/posStore";
 import { useOecStore } from "@/store/oecStore";
 import { useCustomerStore } from "@/store/customerStore";
@@ -22,19 +24,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, ShoppingCart } from "lucide-react";
+
 
 export function BillingSection() {
-  // ✅ FIX 2: Get the session data for the logged-in user
   const { data: session } = useSession();
 
   const { cart, clearCart, addOecToCart, isGstEnabled, toggleGst, addToCart } = usePosStore();
   const { oecs, fetchOecs } = useOecStore();
   const {
     phone, name, address, setPhone, setName, setAddress,
-    findCustomerByPhone, createCustomer, resetCustomer, isCustomerFound, isLoading, customer, visitCount
+    searchCustomersByPhonePrefix, selectCustomer, createCustomer, 
+    resetCustomer, isCustomerFound, isLoading, customer, visitCount, 
+    suggestions 
   } = useCustomerStore();
+
   const { openModal } = usePrintStore();
   const { suggestedProducts, fetchSuggestions, clearSuggestions, isLoading: isSuggestionLoading } = useSuggestionStore();
 
@@ -52,7 +55,8 @@ export function BillingSection() {
   const [isOilExpelling, setIsOilExpelling] = useState(false);
   const [excludePacking, setExcludePacking] = useState(false);
 
-  const debouncedPhone = useDebounce(phone, 500);
+  // Debounce hook for search-as-you-type API calls
+  const debouncedPhonePrefix = useDebounce(phone, 300); 
 
   const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
   const totalGstAmount = useMemo(() => {
@@ -76,13 +80,29 @@ export function BillingSection() {
 
   const debouncedChangeAmount = useDebounce(changeAmount, 750);
 
+  // ✅ SEARCH-AS-YOU-TYPE LOGIC: Triggers customer search after a pause
   useEffect(() => {
-    if (debouncedPhone.length === 10) {
-      findCustomerByPhone(debouncedPhone);
-    } else if (isCustomerFound) {
-      resetCustomer();
+    // Only search if the debounced prefix is 3 or more digits
+    if (debouncedPhonePrefix.length >= 3 && debouncedPhonePrefix.length <= 10) {
+      searchCustomersByPhonePrefix(debouncedPhonePrefix);
+    } else if (debouncedPhonePrefix.length < 3) {
+      // Clear suggestions if too short
+      useCustomerStore.setState({ suggestions: [] });
     }
-  }, [debouncedPhone, findCustomerByPhone, resetCustomer, isCustomerFound]);
+  }, [debouncedPhonePrefix, searchCustomersByPhonePrefix]);
+
+
+  // ✅ RESET/INSTANT POPULATE LOGIC: Handles clearing and instant selection logic
+  useEffect(() => {
+    // If phone drops to 0, reset everything
+    if (phone.length === 0) {
+        resetCustomer();
+    } 
+    // If a customer was found, but the user starts deleting the phone number, reset the form fields.
+    else if (phone.length < 10 && isCustomerFound) {
+      useCustomerStore.setState({ isCustomerFound: false, customer: null, name: '', address: '', visitCount: 0 });
+    }
+  }, [phone, resetCustomer, isCustomerFound]);
 
   useEffect(() => {
     if (debouncedChangeAmount > 0) {
@@ -135,14 +155,14 @@ export function BillingSection() {
     }
     setIsSaving(true);
     const invoicePayload: InvoiceDataPayload = {
-      billedById: session.user.id, // ✅ FIX 2: Add the user's ID
+      billedById: session.user.id, 
       customerId: customer._id,
       items: cart.map((item) => ({
         variantId: item._id,
         name: item.product.productName,
         price: item.price,
         quantity: item.quantity,
-        mrp: item.mrp ?? 0, // ✅ FIX 1: Provide a fallback of 0 if mrp is undefined
+        mrp: item.mrp ?? 0, 
         gstRate: isGstEnabled ? (item.product.tax?.gst ?? 0) : 0,
         hsn: isGstEnabled ? (item.product.tax?.hsn ?? '') : '',
       })),
@@ -177,13 +197,45 @@ export function BillingSection() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs">
               <div className="relative flex-1">
-                <Input
-                  placeholder="Phone Number"
-                  className="h-8 bg-gray-700 border-none text-white"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  maxLength={10}
-                />
+                {/* Customer Phone Input with Popover for Suggestions */}
+                <Popover open={suggestions.length > 0 && phone.length >= 3} onOpenChange={() => {
+                  // Only close the popover if there's no ongoing search
+                  if (!isLoading) useCustomerStore.setState({ suggestions: [] });
+                }}>
+                  <PopoverTrigger asChild>
+                    <Input
+                      placeholder="Phone Number"
+                      className="h-8 bg-gray-700 border-none text-white"
+                      type="tel"
+                      value={phone}
+                      // ✅ Writable fix: Use simplified onChange logic
+                      onChange={(e) => {
+                          const rawValue = e.target.value.replace(/\D/g, "");
+                          setPhone(rawValue.slice(0, 10));
+                      }}
+                      maxLength={10}
+                    />
+                  </PopoverTrigger>
+                  
+                  {/* ✅ Popover Content: Display Search Results */}
+                  <PopoverContent className="w-[300px] p-0 bg-gray-800 border-gray-700 max-h-60 overflow-y-auto z-50">
+                    {isLoading && <div className="p-2 flex items-center justify-center"><Loader2 className="animate-spin h-4 w-4" /></div>}
+                    {!isLoading && suggestions.length === 0 && phone.length >= 3 && (
+                      <p className="p-2 text-xs text-gray-400">No matches found.</p>
+                    )}
+                    {suggestions.map(cust => (
+                      <div 
+                        key={cust._id} 
+                        className="p-2 border-b border-gray-700 hover:bg-gray-700 cursor-pointer text-xs"
+                        onClick={() => selectCustomer(cust)} // Selects and populates fields
+                      >
+                        <span className="font-bold text-white">{cust.phone}</span>
+                        <span className="ml-2 text-gray-400">{cust.name}</span>
+                      </div>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+
                 {isLoading && <Loader2 className="animate-spin h-4 w-4 absolute right-2 top-2 text-gray-400" />}
               </div>
               <Input
@@ -191,7 +243,7 @@ export function BillingSection() {
                 className="h-8 bg-gray-700 border-none text-white flex-1"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                readOnly={isCustomerFound}
+                readOnly={isCustomerFound} // Name is readOnly once a customer is found/selected
               />
               <Input
                 placeholder="Address (Optional)"
@@ -199,6 +251,7 @@ export function BillingSection() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
               />
+              {/* ✅ ADD BUTTON LOGIC: Show only if not found but all necessary fields are complete */}
               {!isCustomerFound && phone.length === 10 && name.trim().length > 1 && (
                 <Button onClick={createCustomer} variant="outline" className="h-8 px-2 py-1 text-black bg-yellow-500 hover:bg-yellow-600 font-semibold text-xs">
                   Add

@@ -11,23 +11,28 @@ export async function GET(
   try {
     await connectToDatabase();
     
-    // ✅ FIX: Access 'phone' directly from the destructured 'params' object
-    // This resolves the Next.js dynamic API sync/async warning.
-    const phone = params.phone; 
+    const phonePrefix = params.phone; 
 
-    if (!phone || !/^\d{10}$/.test(phone)) {
-      return NextResponse.json({ message: 'A valid 10-digit phone number is required.' }, { status: 400 });
+    // ✅ MODIFICATION 1: Allow partial search (e.g., minimum 3 digits)
+    // We now look for partial matches starting from the beginning of the field.
+    if (!phonePrefix || phonePrefix.length < 3 || phonePrefix.length > 10) {
+      return NextResponse.json({ message: 'Enter 3 to 10 digits to search.' }, { status: 400 });
     }
 
-    const customer = await Customer.findOne({ phone });
+    // ✅ MODIFICATION 2: Use MongoDB $regex for "starts with" search
+    const customers = await Customer.find({ 
+      phone: { $regex: `^${phonePrefix}` } 
+    }).limit(10); // Limit results for performance
 
-    if (!customer) {
-      return NextResponse.json({ message: 'Customer not found.' }, { status: 404 });
+    // MODIFICATION 3: Check if results were found
+    if (!customers || customers.length === 0) {
+      return NextResponse.json({ message: 'No matching customers found.' }, { status: 404 });
     }
 
-    return NextResponse.json(customer, { status: 200 });
+    // Return the array of matching customers
+    return NextResponse.json(customers, { status: 200 });
   } catch (error) {
-    console.error("Failed to fetch customer:", error);
+    console.error("Failed to fetch customer search results:", error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
