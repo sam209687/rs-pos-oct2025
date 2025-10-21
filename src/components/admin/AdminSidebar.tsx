@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useTransition } from "react"; // 👈 ADDED useTransition
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -20,6 +20,7 @@ import {
   ReceiptIndianRupee,
   UserCircle,
   ReceiptText,
+  Loader2, // 👈 ADDED Loader2 for button
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,9 @@ import { useNotificationStore } from "@/store/notification.store";
 import { useStoreDetailsStore } from "@/store/storeDetails.store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+// 💡 NEW IMPORT: Global Loading Store
+import { useLoadingStore } from "@/store/loading.store";
+
 interface AdminSidebarProps {
   isCollapsed: boolean;
 }
@@ -44,15 +48,40 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const userId = session?.user?.id;
+  
+  // 💡 NEW: Use transition for navigation
+  const [isPending, startTransition] = useTransition();
+
+  // 💡 NEW: Get setLoading function from the store
+  const { setLoading } = useLoadingStore();
 
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
   const { activeStore } = useStoreDetailsStore();
+
+  // 💡 MODIFIED: Set the global loading state when transition starts/ends
+  useEffect(() => {
+    setLoading(isPending);
+  }, [isPending, setLoading]);
+
 
   useEffect(() => {
     if (userId) {
       fetchUnreadCount(userId);
     }
   }, [userId, fetchUnreadCount]);
+
+  // Handler for all Link clicks
+  const handleLinkClick = (e: React.MouseEvent) => {
+    // Prevent the default navigation initially
+    e.preventDefault(); 
+    const target = e.currentTarget as HTMLAnchorElement;
+    
+    // Start the transition, which updates isPending to true
+    startTransition(() => {
+      // Manually trigger the navigation after the transition has started
+      window.location.href = target.href;
+    });
+  };
 
   const navItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -78,7 +107,10 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
   };
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/auth" });
+    // You can also wrap the signOut in startTransition if the logout process itself is slow
+    startTransition(async () => {
+        await signOut({ callbackUrl: "/auth" });
+    });
   };
 
   return (
@@ -89,10 +121,10 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
           isCollapsed ? "w-20" : "w-64"
         )}
       >
-        {/* ✅ MODIFIED: Logo section with new padding and sizes */}
+        {/* ... (Logo section remains the same) ... */}
         <div
           className={cn(
-            "flex items-center h-16 border-b dark:border-gray-800 px-4 py-2", // Added vertical padding
+            "flex items-center h-16 border-b dark:border-gray-800 px-4 py-2", 
             isCollapsed ? "justify-center" : "justify-start"
           )}
         >
@@ -101,8 +133,8 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
               <Image 
                 src={activeStore.logo} 
                 alt="Store Logo" 
-                width={isCollapsed ? 32 : 140} // Decreased collapsed size, increased expanded size
-                height={isCollapsed ? 32 : 40} // Adjusted height for collapsed state
+                width={isCollapsed ? 32 : 140} 
+                height={isCollapsed ? 32 : 40} 
                 className={cn(
                   "object-contain transition-all duration-300",
                   "brightness-125"
@@ -119,6 +151,8 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
             const linkContent = (
               <Link
                 href={item.href}
+                // 💡 MODIFIED: Use the transition handler
+                onClick={handleLinkClick} 
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 ease-in-out group",
                   pathname === item.href
@@ -152,6 +186,7 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
           })}
 
           {/* Product Dropdown NavLink */}
+          {/* Note: DropdownMenuItem links need the onClick handler too */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -167,13 +202,13 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 z-[99]" side="right" sideOffset={10}>
               <DropdownMenuItem asChild>
-                <Link href="/admin/products"><Store className="mr-2 h-4 w-4" />Products</Link>
+                <Link href="/admin/products" onClick={handleLinkClick}><Store className="mr-2 h-4 w-4" />Products</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/admin/variants"><TrendingUpDown className="mr-2 h-4 w-4" />Create Variant</Link>
+                <Link href="/admin/variants" onClick={handleLinkClick}><TrendingUpDown className="mr-2 h-4 w-4" />Create Variant</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/admin/batch"><Box className="mr-2 h-4 w-4" />Generate Batch</Link>
+                <Link href="/admin/batch" onClick={handleLinkClick}><Box className="mr-2 h-4 w-4" />Generate Batch</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -194,13 +229,16 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 z-[99]" side="right" sideOffset={10}>
                <DropdownMenuItem asChild>
-                <Link href="/admin/tax"><ReceiptIndianRupee className="mr-2 h-4 w-4" />Tax</Link>
+                <Link href="/admin/tax" onClick={handleLinkClick}><ReceiptIndianRupee className="mr-2 h-4 w-4" />Tax</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/admin/store-settings"><Store className="mr-2 h-4 w-4" />Store Settings</Link>
+                <Link href="/admin/store-settings" onClick={handleLinkClick}><Store className="mr-2 h-4 w-4" />Store Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/admin/currency"><UserCircle className="mr-2 h-4 w-4" />Currency Setting</Link>
+                <Link href="/admin/currency" onClick={handleLinkClick}><UserCircle className="mr-2 h-4 w-4" />Currency Setting</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin/packingProds" onClick={handleLinkClick}><UserCircle className="mr-2 h-4 w-4" />Packing Details</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -214,12 +252,18 @@ export function AdminSidebar({ isCollapsed }: AdminSidebarProps) {
             variant="ghost"
             className={cn("w-full flex items-center justify-start rounded-md px-3 py-2", isCollapsed ? "justify-center" : "")}
             onClick={handleLogout}
+            disabled={isPending} // Disable button while loading
           >
-            <Avatar className={cn("h-8 w-8", isCollapsed ? "mr-0" : "mr-3")}>
-              <AvatarImage src={user.avatar} alt={user.name || ''} />
-              <AvatarFallback>{user.name ? user.name.charAt(0) : 'A'}</AvatarFallback>
-            </Avatar>
-            <span className={cn(isCollapsed ? "hidden" : "")}>Logout</span>
+            {/* 💡 MODIFIED: Added inline spinner for logout button */}
+            {isPending ? (
+              <Loader2 className={cn("h-4 w-4 animate-spin", isCollapsed ? "" : "mr-3")} />
+            ) : (
+                <Avatar className={cn("h-8 w-8", isCollapsed ? "mr-0" : "mr-3")}>
+                  <AvatarImage src={user.avatar} alt={user.name || ''} />
+                  <AvatarFallback>{user.name ? user.name.charAt(0) : 'A'}</AvatarFallback>
+                </Avatar>
+            )}
+            <span className={cn(isCollapsed ? "hidden" : "")}>{isPending ? "Signing Out..." : "Logout"}</span>
           </Button>
         </div>
       </div>

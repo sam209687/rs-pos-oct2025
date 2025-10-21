@@ -14,10 +14,18 @@ import { getSalesMetrics } from "@/actions/salesTracking.actions";
 import { getFinancialMetrics } from "@/actions/invoice.actions";
 
 import { MonthlySalesChart } from "./MonthlySalesChart";
-import { TransactionHistoryTable } from "./TransactionHistoryTable";
+import { CustomerDetailsTable } from "./CustomerDetailsTable"; 
 import { SalesTrackingMetrics } from "./SalesTrackingMetrics";
 import { DashboardFilter } from "./DashboardFilter";
 import { PermanentCalendarCard } from "./PermanentCalendarCard";
+import { StockAlertCard } from "./StockAlertCard";
+import { BoardPriceCard } from "./BoardPriceCard"; // Imported new component
+
+import { useMonthlySalesStore } from "@/store/monthlySales.store"; 
+import { useCustomerDetailsStore } from "@/store/customerDetails.store"; 
+import { useStockAlertStore } from "@/store/stockAlert.store"; 
+import { useBoardPriceStore } from "@/store/boardPrice.store"; // Imported new store
+
 
 const DynamicSalesOverviewChart = dynamic(
   () => import("./SaleOverviewChart").then((mod) => mod.SalesOverviewChart),
@@ -28,7 +36,6 @@ interface DashboardPageProps {
   initialData: DashboardData | null;
 }
 
-// Define the structure for the depositable charges breakdown (must match the action's return)
 interface DepositableCharges {
   packingCharges: number;
   laborCharges: number;
@@ -42,16 +49,41 @@ interface AllMetrics {
   avgOrderValue: number;
   totalProfit: number;
   totalDeposits: number;
-  // ✅ FIX 1: Add required property to state interface
   depositableCharges: DepositableCharges; 
 }
 
 export function DashboardPage({ initialData }: DashboardPageProps) {
   const { dashboardData, isLoading, refreshData } = useAdminPanelStore();
 
+  const { monthlySales, isLoading: isMonthlySalesLoading, fetchMonthlySales } = useMonthlySalesStore(); 
+  
+  // Destructure Board Price Store data
+  const { 
+    products: boardPriceProducts, 
+    totalProducts,
+    isLoading: isBoardPriceLoading, 
+    error: boardPriceError, 
+    fetchProducts: fetchBoardPrices 
+  } = useBoardPriceStore();
+
+  // Destructure Customer Details Store data
+  const { 
+    newCustomers, 
+    totalCustomerCount, 
+    isLoading: isCustomerLoading, 
+    fetchCustomerDetails 
+  } = useCustomerDetailsStore(); 
+
+  // Destructure Stock Alert Store data
+  const { 
+    lowStockVariants, 
+    isLoading: isStockAlertLoading, 
+    error: stockAlertError, 
+    fetchLowStockAlerts 
+  } = useStockAlertStore();
+
   const [salesData, setSalesData] = useState<VariantSalesData[]>([]);
   
-  // ✅ FIX 2: Initialize state with the required nested object (fixes runtime error on initial render)
   const [allMetrics, setAllMetrics] = useState<AllMetrics>({
     totalRevenue: 0,
     totalSales: 0,
@@ -107,6 +139,12 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
       });
     }
 
+    // Fetch dynamic data for the new components
+    fetchMonthlySales();
+    fetchCustomerDetails(); 
+    fetchLowStockAlerts(); 
+    fetchBoardPrices(); // ✅ FIX: Call fetchBoardPrices on mount
+
     const fetchAllData = async () => {
       try {
         const [salesResult, basicMetricsResult, financialResult] =
@@ -118,7 +156,6 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
 
         console.log("💰 Financial Metrics:", financialResult);
 
-        // ✅ FIX 3: Safely extract profit, deposits, and the breakdown object
         const totalProfit =
           financialResult.success && financialResult.data
             ? financialResult.data.totalProfit
@@ -129,11 +166,10 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
             ? financialResult.data.totalDeposits
             : 0;
             
-        // ✅ FIX 4: Extract the required breakdown object, defaulting to the initial state structure
         const depositableCharges = 
             financialResult.success && financialResult.data && financialResult.data.depositableCharges
             ? financialResult.data.depositableCharges
-            : allMetrics.depositableCharges; // Use existing valid structure
+            : allMetrics.depositableCharges;
 
         if (salesResult.success && salesResult.data) {
           const processedData = salesResult.data.map((item, index) => ({
@@ -148,14 +184,14 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
             ...basicMetricsResult.data,
             totalProfit,
             totalDeposits,
-            depositableCharges, // ✅ FIX 5: Set the full breakdown object in state
+            depositableCharges, 
           });
         } else {
           setAllMetrics((prev) => ({
             ...prev,
             totalProfit,
             totalDeposits,
-            depositableCharges, // ✅ FIX 5: Set the full breakdown object in state
+            depositableCharges,
           }));
         }
 
@@ -165,9 +201,18 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     };
 
     fetchAllData();
-  }, [initialData, fromDate, toDate]);
+  }, [
+    initialData, 
+    fromDate, 
+    toDate, 
+    fetchMonthlySales, 
+    fetchCustomerDetails,
+    fetchLowStockAlerts,
+    fetchBoardPrices // ✅ FIX: Added to dependencies
+  ]); 
 
-  if (isLoading || !dashboardData) {
+  // ✅ FIX: Include isBoardPriceLoading in the main loading check
+  if (isLoading || !dashboardData || isMonthlySalesLoading || isCustomerLoading || isStockAlertLoading || isBoardPriceLoading) {
     return <div>Loading...</div>;
   }
 
@@ -191,7 +236,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
         avgOrderValue={allMetrics.avgOrderValue}
         totalProfit={allMetrics.totalProfit}
         totalDeposits={allMetrics.totalDeposits}
-        depositableCharges={allMetrics.depositableCharges} // ✅ FIX 6: Pass the required prop
+        depositableCharges={allMetrics.depositableCharges}
       />
 
       {/* Charts + Calendar */}
@@ -207,12 +252,38 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
         </div>
       </div>
 
-      {/* Monthly and Transaction History */}
+      {/* 🛑 ROW 1: Monthly Sales Chart and Customer Details Table (2 columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <MonthlySalesChart data={dashboardData.saleOverview} />
+        <MonthlySalesChart data={monthlySales} /> 
+        
+        <CustomerDetailsTable 
+            data={newCustomers}
+            totalCustomerCount={totalCustomerCount}
+            isLoading={isCustomerLoading}
+        />
+      </div>
+      
+      {/* 🛑 ROW 2: Stock Alert Card (1 column, full width) */}
+      <div className="grid grid-cols-1 gap-4">
+        <StockAlertCard
+            data={lowStockVariants} 
+            isLoading={isStockAlertLoading}
+            error={stockAlertError}
+        />
       </div>
 
-      <TransactionHistoryTable data={dashboardData.transactionHistory} />
+      {/* 🛑 ROW 3: Board Price Card (1 column, full width) */}
+      <div className="grid grid-cols-1 gap-4">
+        <BoardPriceCard
+            data={boardPriceProducts}
+            totalCount={totalProducts}
+            isLoading={isBoardPriceLoading}
+            error={boardPriceError}
+        />
+      </div>
+      
+      {/* Transaction History Table (If needed, place it here as full width) */}
+      {/* <TransactionHistoryTable data={dashboardData.transactionHistory} /> */}
     </div>
   );
 }

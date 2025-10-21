@@ -27,6 +27,16 @@ export interface VariantData {
   others2?: number;
 }
 
+export interface LowStockAlertData {
+  _id: string;
+  productName: string;
+  variantVolume: number;
+  unit: string;
+  stockQuantity: number;
+  stockAlertQuantity: number;
+  variantColor: string;
+}
+
 // Fetch all variants
 export const getVariants = async () => {
   try {
@@ -122,5 +132,72 @@ export const getVariantsByProductId = async (productId: string) => {
   } catch (error) {
     console.error("Failed to fetch variants by product ID:", error);
     return { success: false, message: "Failed to fetch variants." };
+  }
+};
+
+export const getLowStockVariants = async () => {
+  try {
+    await connectToDatabase();
+    
+    // Core logic: find where stockQuantity is <= stockAlertQuantity
+    const lowStockVariants = await Variant.find({
+      $expr: { $lte: ["$stockQuantity", "$stockAlertQuantity"] }
+    })
+    .populate("product unit") // Populate product and unit
+    .lean();
+    
+    // Structure the data for the frontend
+    const alertData: LowStockAlertData[] = lowStockVariants.map((variant: any) => {
+        
+        let productName: string;
+        
+        // 💡 FIX: Check if product is populated and has a name. 
+        // If not, use productCode (e.g., EO0002) as the fallback.
+        if (variant.product && variant.product.name) {
+            productName = variant.product.name;
+        } else if (variant.product && variant.product.productCode) {
+            // Assuming your Product model has a 'productCode' field
+            productName = variant.product.productCode; 
+        } else {
+            productName = 'Product Code Missing'; 
+        }
+
+        return {
+            _id: variant._id.toString(),
+            productName: productName, // Use the determined name/code
+            variantVolume: variant.variantVolume,
+            // Assuming populated unit has a 'name' field
+            unit: variant.unit.name || 'Unit', 
+            stockQuantity: variant.stockQuantity,
+            stockAlertQuantity: variant.stockAlertQuantity,
+            variantColor: variant.variantColor || 'N/A'
+        };
+    });
+
+    return { success: true, data: JSON.parse(JSON.stringify(alertData)) };
+  } catch (error) {
+    console.error("Failed to fetch low stock variants:", error);
+    return { success: false, message: "Failed to fetch low stock variants." };
+  }
+};
+
+// 💡 NEW FUNCTION: Get the total StockQuantity used for a specific packing capacity
+export const getUsedPackingMaterialQuantity = async (volume: number, unitId: string): Promise<{ success: boolean; data: number; message?: string; }> => {
+  try {
+    await connectToDatabase();
+
+    // Find all variants that use this specific volume and unit
+    const variants = await Variant.find({
+      variantVolume: volume,
+      unit: unitId,
+    }).select('stockQuantity').lean();
+
+    // Sum up the stockQuantity of all matching variants
+    const totalUsedQuantity = variants.reduce((sum, variant) => sum + variant.stockQuantity, 0);
+
+    return { success: true, data: totalUsedQuantity };
+  } catch (error) {
+    console.error("Failed to calculate used packing quantity:", error);
+    return { success: false, data: 0, message: "Failed to calculate used packing quantity." };
   }
 };

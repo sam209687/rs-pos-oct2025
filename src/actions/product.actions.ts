@@ -29,6 +29,14 @@ export interface ProductData {
   totalPrice?: number;
 }
 
+export interface BoardPriceItem {
+  _id: string;
+  productName: string;
+  productCode: string;
+  sellingPrice: number;
+}
+
+
 export const generateProductCodeForUI = async (categoryId: string) => {
   try {
     const categoryResult = await getCategoryById(categoryId);
@@ -86,6 +94,66 @@ export const getProducts = async () => {
   }
 };
 
+export const getBoardPriceProducts = async () => {
+  try {
+    await connectToDatabase();
+    // Fetch only the required fields
+    const products = await Product.find({})
+      .select('productName productCode sellingPrice')
+      .lean();
+
+    const totalCount = await Product.countDocuments(); // Count total documents
+
+    const boardPriceData: BoardPriceItem[] = products.map((product) => ({
+      // FIX: Assert type of _id to any to resolve TS2339/TS18046 error on .toString()
+      _id: (product._id as any).toString(), 
+      productName: product.productName,
+      productCode: product.productCode,
+      sellingPrice: product.sellingPrice,
+    }));
+    
+    return { success: true, data: JSON.parse(JSON.stringify(boardPriceData)), totalCount };
+  } catch (error) {
+    console.error("Failed to fetch board price products:", error);
+    return { success: false, message: "Failed to fetch board price products.", totalCount: 0 };
+  }
+};
+
+// 💡 Action to update only the selling price
+export const updateProductSellingPrice = async (id: string, newPrice: number) => {
+  try {
+    await connectToDatabase();
+    
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { 
+        sellingPrice: newPrice,
+        totalPrice: newPrice, // Update totalPrice to match sellingPrice
+      },
+      { new: true, select: 'productName sellingPrice' } // Return only relevant fields
+    );
+
+    if (!updatedProduct) {
+      return { success: false, message: "Product not found." };
+    }
+    
+    // Revalidate the path to ensure any related caches are cleared
+    revalidatePath("/admin/dashboard"); 
+    
+    return { 
+        success: true, 
+        message: `${updatedProduct.productName} price updated to ₹${newPrice.toFixed(2)}`,
+        data: {
+            _id: updatedProduct._id.toString(),
+            sellingPrice: updatedProduct.sellingPrice
+        }
+    };
+  } catch (error) {
+    console.error("Failed to update product price:", error);
+    return { success: false, message: "Failed to update product price." };
+  }
+};
+
 export const getProductById = async (id: string) => {
   try {
     await connectToDatabase();
@@ -105,7 +173,6 @@ export const createProduct = async (data: ProductData) => {
     const validatedData = productSchema.parse(data);
     await connectToDatabase();
     
-    // ✅ FIX: Calculate totalPrice before saving
     validatedData.totalPrice = validatedData.sellingPrice;
     
     const newProduct = new Product(validatedData);
@@ -126,7 +193,6 @@ export const updateProduct = async (id: string, data: ProductData) => {
     const validatedData = productSchema.parse(data);
     await connectToDatabase();
 
-    // ✅ FIX: Calculate totalPrice before updating
     validatedData.totalPrice = validatedData.sellingPrice;
     
     const updatedProduct = await Product.findByIdAndUpdate(

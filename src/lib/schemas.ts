@@ -1,5 +1,9 @@
 // src/lib/schemas.ts
 import { z } from "zod";
+import { 
+    packingMaterialSchema as packingMaterialSchema_internal, 
+    PackingMaterialFormValues as PackingMaterialFormValues_internal 
+} from "./schemas/packingMaterialSchema";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = [
@@ -157,3 +161,6 @@ export const messageSchema = z.object({
   recipient: z.string().min(1, "Recipient ID is required."),
   content: z.string().min(1, "Message content cannot be empty."),
 });
+
+export const PackingMaterialSchema = packingMaterialSchema_internal;
+export type PackingMaterialFormValues = PackingMaterialFormValues_internal;
