@@ -49,7 +49,7 @@ const calculateBalance = async (material: IPopulatedPackingMaterial): Promise<nu
     return material.purchasedQuantity - usedQuantity;
 };
 
-const enrichMaterialWithBalance = async (material: IPopulatedPackingMaterial): Promise<PackingMaterialWithBalance> => {
+export const enrichMaterialWithBalance = async (material: IPopulatedPackingMaterial): Promise<PackingMaterialWithBalance> => {
     const balance = await calculateBalance(material);
     // Mongoose lean documents need to be converted to plain objects for safe modification/spreading
     const materialObject = JSON.parse(JSON.stringify(material)); 

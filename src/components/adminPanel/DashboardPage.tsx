@@ -1,3 +1,4 @@
+// src/components/adminPanel/dashboard/DashboardPage.tsx
 "use client";
 
 import { useAdminPanelStore, DashboardData } from "@/store/adminPanelStore";
@@ -25,6 +26,7 @@ import { useMonthlySalesStore } from "@/store/monthlySales.store";
 import { useCustomerDetailsStore } from "@/store/customerDetails.store"; 
 import { useStockAlertStore } from "@/store/stockAlert.store"; 
 import { useBoardPriceStore } from "@/store/boardPrice.store"; // Imported new store
+import { PackingMaterialAlertCard } from "./PackingMaterialAlertCard";
 
 
 const DynamicSalesOverviewChart = dynamic(
@@ -143,7 +145,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     fetchMonthlySales();
     fetchCustomerDetails(); 
     fetchLowStockAlerts(); 
-    fetchBoardPrices(); // ✅ FIX: Call fetchBoardPrices on mount
+    fetchBoardPrices(); // ✅ Call fetchBoardPrices on mount
 
     const fetchAllData = async () => {
       try {
@@ -208,10 +210,9 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     fetchMonthlySales, 
     fetchCustomerDetails,
     fetchLowStockAlerts,
-    fetchBoardPrices // ✅ FIX: Added to dependencies
+    fetchBoardPrices 
   ]); 
 
-  // ✅ FIX: Include isBoardPriceLoading in the main loading check
   if (isLoading || !dashboardData || isMonthlySalesLoading || isCustomerLoading || isStockAlertLoading || isBoardPriceLoading) {
     return <div>Loading...</div>;
   }
@@ -252,7 +253,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
         </div>
       </div>
 
-      {/* 🛑 ROW 1: Monthly Sales Chart and Customer Details Table (2 columns) */}
+      {/* ROW 1: Monthly Sales Chart and Customer Details Table (2 columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <MonthlySalesChart data={monthlySales} /> 
         
@@ -263,16 +264,19 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
         />
       </div>
       
-      {/* 🛑 ROW 2: Stock Alert Card (1 column, full width) */}
-      <div className="grid grid-cols-1 gap-4">
+      {/* 🛑 ALTERED ROW: Stock and Packing Material Alert Cards (2 equal columns) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Stock Alert Card (takes 1/2 width on large screens) */}
         <StockAlertCard
             data={lowStockVariants} 
             isLoading={isStockAlertLoading}
             error={stockAlertError}
         />
+        {/* Packing Material Alert Card (takes 1/2 width on large screens) */}
+        <PackingMaterialAlertCard />
       </div>
 
-      {/* 🛑 ROW 3: Board Price Card (1 column, full width) */}
+      {/* ROW 3: Board Price Card (1 column, full width) */}
       <div className="grid grid-cols-1 gap-4">
         <BoardPriceCard
             data={boardPriceProducts}
