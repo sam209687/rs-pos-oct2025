@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
+import { format, subDays, startOfDay, endOfDay } from "date-fns"; 
 
 import {
   getSalesDataByVariant,
@@ -20,12 +21,12 @@ import { SalesTrackingMetrics } from "./SalesTrackingMetrics";
 import { DashboardFilter } from "./DashboardFilter";
 import { PermanentCalendarCard } from "./PermanentCalendarCard";
 import { StockAlertCard } from "./StockAlertCard";
-import { BoardPriceCard } from "./BoardPriceCard"; // Imported new component
+import { BoardPriceCard } from "./BoardPriceCard"; 
 
 import { useMonthlySalesStore } from "@/store/monthlySales.store"; 
 import { useCustomerDetailsStore } from "@/store/customerDetails.store"; 
 import { useStockAlertStore } from "@/store/stockAlert.store"; 
-import { useBoardPriceStore } from "@/store/boardPrice.store"; // Imported new store
+import { useBoardPriceStore } from "@/store/boardPrice.store"; 
 import { PackingMaterialAlertCard } from "./PackingMaterialAlertCard";
 
 
@@ -54,12 +55,16 @@ interface AllMetrics {
   depositableCharges: DepositableCharges; 
 }
 
+// Helper functions for initializing the default 'Last 7 Days' filter
+const getStartOfLast7Days = () => startOfDay(subDays(new Date(), 7));
+const getEndOfToday = () => endOfDay(new Date());
+
+
 export function DashboardPage({ initialData }: DashboardPageProps) {
   const { dashboardData, isLoading, refreshData } = useAdminPanelStore();
 
   const { monthlySales, isLoading: isMonthlySalesLoading, fetchMonthlySales } = useMonthlySalesStore(); 
   
-  // Destructure Board Price Store data
   const { 
     products: boardPriceProducts, 
     totalProducts,
@@ -68,7 +73,6 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     fetchProducts: fetchBoardPrices 
   } = useBoardPriceStore();
 
-  // Destructure Customer Details Store data
   const { 
     newCustomers, 
     totalCustomerCount, 
@@ -76,7 +80,6 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     fetchCustomerDetails 
   } = useCustomerDetailsStore(); 
 
-  // Destructure Stock Alert Store data
   const { 
     lowStockVariants, 
     isLoading: isStockAlertLoading, 
@@ -100,10 +103,10 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     },
   });
 
-  const [fromDate, setFromDate] = useState<Date | undefined>(
-    new Date(new Date().setDate(new Date().getDate() - 7))
-  );
-  const [toDate, setToDate] = useState<Date | undefined>(new Date());
+  // State initialized to 'last7days' for default rendering
+  const [activeFilterType, setActiveFilterType] = useState<string>('last7days');
+  const [fromDate, setFromDate] = useState<Date | undefined>(getStartOfLast7Days());
+  const [toDate, setToDate] = useState<Date | undefined>(getEndOfToday());
 
   const chartColors = [
     "#8884d8",
@@ -114,8 +117,10 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     "#FF008C",
   ];
 
+  // Callback to update filter dates and type when DashboardFilter changes
   const handleFilterChange = useCallback(
     (filterType: string, newFromDate?: Date, newToDate?: Date) => {
+      setActiveFilterType(filterType); 
       setFromDate(newFromDate);
       setToDate(newToDate);
     },
@@ -124,15 +129,15 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
 
   const handleCalendarDateChange = useCallback((date: Date | undefined) => {
     if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      setFromDate(startOfDay);
-      setToDate(endOfDay);
+      setActiveFilterType('custom-card'); 
+      const start = startOfDay(date);
+      const end = endOfDay(date);
+      setFromDate(start);
+      setToDate(end);
     }
   }, []);
-
+  
+  // Effect runs on mount and whenever fromDate or toDate changes to fetch data
   useEffect(() => {
     if (initialData) {
       useAdminPanelStore.setState({
@@ -145,18 +150,17 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
     fetchMonthlySales();
     fetchCustomerDetails(); 
     fetchLowStockAlerts(); 
-    fetchBoardPrices(); // ✅ Call fetchBoardPrices on mount
+    fetchBoardPrices(); 
 
     const fetchAllData = async () => {
       try {
+        // Use the current fromDate and toDate state values for API calls
         const [salesResult, basicMetricsResult, financialResult] =
           await Promise.all([
             getSalesDataByVariant(fromDate, toDate),
             getSalesMetrics(fromDate, toDate),
-            getFinancialMetrics(),
+            getFinancialMetrics(fromDate, toDate),
           ]);
-
-        console.log("💰 Financial Metrics:", financialResult);
 
         const totalProfit =
           financialResult.success && financialResult.data
@@ -206,7 +210,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
   }, [
     initialData, 
     fromDate, 
-    toDate, 
+    toDate,   
     fetchMonthlySales, 
     fetchCustomerDetails,
     fetchLowStockAlerts,
@@ -222,8 +226,18 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        {/* All filter elements are in this single row div */}
         <div className="flex items-center space-x-4">
-          <DashboardFilter onFilterChange={handleFilterChange} />
+          
+          <DashboardFilter 
+            onFilterChange={handleFilterChange} 
+            activeFilterType={activeFilterType}
+            currentFromDate={fromDate}
+            currentToDate={toDate}
+            // 🛠️ FIX: Add key prop to force remount/reset of local state when filter type changes.
+            key={activeFilterType} 
+          />
+          
           <Button onClick={refreshData} disabled={isLoading}>
             <RefreshCcw className="h-4 w-4 mr-2" /> Refresh Data
           </Button>
@@ -264,7 +278,7 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
         />
       </div>
       
-      {/* 🛑 ALTERED ROW: Stock and Packing Material Alert Cards (2 equal columns) */}
+      {/* Stock and Packing Material Alert Cards (2 equal columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Stock Alert Card (takes 1/2 width on large screens) */}
         <StockAlertCard
@@ -286,8 +300,6 @@ export function DashboardPage({ initialData }: DashboardPageProps) {
         />
       </div>
       
-      {/* Transaction History Table (If needed, place it here as full width) */}
-      {/* <TransactionHistoryTable data={dashboardData.transactionHistory} /> */}
     </div>
   );
 }

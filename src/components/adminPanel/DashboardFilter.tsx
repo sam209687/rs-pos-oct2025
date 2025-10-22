@@ -1,117 +1,170 @@
+// src/components/adminPanel/dashboard/DashboardFilter.tsx (Modified for Key Prop)
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { DateRange } from "react-day-picker"; // ✅ Import the DateRange type
+import { useState } from "react"; // Removed useEffect
+import { format, startOfDay, endOfDay, subDays, subMonths } from "date-fns";
+import { ArrowRight } from "lucide-react"; 
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DashboardFilterProps {
   onFilterChange: (filterType: string, fromDate?: Date, toDate?: Date) => void;
+  activeFilterType: string;
+  currentFromDate?: Date;
+  currentToDate?: Date;
 }
 
-export function DashboardFilter({ onFilterChange }: DashboardFilterProps) {
-  // ✅ Use the imported DateRange type for better type safety
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
-  const [filterType, setFilterType] = useState("last7days");
+const formatDatePicker = (date: Date) => format(date, "LLL dd, y");
 
-  const handleFilterChange = (value: string) => {
-    // If a preset is chosen, clear the custom date range
-    if (value !== "dateRange") {
-      setSelectedRange(undefined);
-    }
+export function DashboardFilter({
+  onFilterChange,
+  activeFilterType, 
+  currentFromDate, 
+  currentToDate,   
+}: DashboardFilterProps) {
+  
+  // Determine if the current active filter is a custom date range
+  const isCustomRange = activeFilterType === 'dateRange';
+
+  // FIX: Initialize local state from props, leveraging the key prop in the parent 
+  // to reset this state entirely when a preset is chosen.
+  const [fromDateState, setFromDateState] = useState<Date | undefined>(
+    isCustomRange ? currentFromDate : undefined
+  );
+  const [toDateState, setToDateState] = useState<Date | undefined>(
+    isCustomRange ? currentToDate : undefined
+  );
+
+  // 🛑 REMOVED: The problematic useEffect hook is removed.
+
+
+  const handlePresetChange = (value: string) => {
     
-    setFilterType(value);
+    // Local state reset happens automatically when parent re-renders with new key.
+
     const now = new Date();
-    let fromDate: Date | undefined;
-    let toDate: Date | undefined = now;
+    let fromDate: Date | undefined = undefined;
+    let toDate: Date | undefined = endOfDay(now); 
 
     switch (value) {
       case "today":
-        fromDate = new Date(now);
-        fromDate.setHours(0, 0, 0, 0);
-        toDate.setHours(23, 59, 59, 999);
+        fromDate = startOfDay(now);
         break;
       case "last7days":
-        fromDate = new Date(now);
-        fromDate.setDate(now.getDate() - 7);
-        fromDate.setHours(0, 0, 0, 0);
+        fromDate = startOfDay(subDays(now, 7)); 
         break;
       case "last3months":
-        fromDate = new Date(now);
-        fromDate.setMonth(now.getMonth() - 3);
-        fromDate.setHours(0, 0, 0, 0);
+        fromDate = startOfDay(subMonths(now, 3));
         break;
       default:
         fromDate = undefined;
         toDate = undefined;
         break;
     }
-    onFilterChange(value, fromDate, toDate);
+    
+    onFilterChange(value, fromDate, toDate); 
   };
+  
+  const handleCustomDateChange = (date: Date | undefined, type: 'from' | 'to') => {
+    
+    const newFrom = type === 'from' ? date : fromDateState;
+    const newTo = type === 'to' ? date : toDateState;
 
-  const handleDateSelect = (range: DateRange | undefined) => {
-    setSelectedRange(range);
-    if (range?.from && range?.to) {
-      // ✅ When a custom range is selected, update the filter type
-      setFilterType("dateRange");
-      onFilterChange("dateRange", range.from, range.to);
+    // Update local state immediately for calendar display
+    if (type === 'from') {
+        setFromDateState(date);
+    } else {
+        setToDateState(date);
+    }
+
+    // Only apply filter if both dates are selected
+    if (newFrom && newTo) {
+      const finalFromDate = startOfDay(newFrom);
+      const finalToDate = endOfDay(newTo);
+
+      if (finalFromDate.getTime() > finalToDate.getTime()) {
+        onFilterChange("dateRange", finalToDate, finalFromDate);
+      } else {
+        onFilterChange("dateRange", finalFromDate, finalToDate);
+      }
     }
   };
 
+
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <Select value={filterType} onValueChange={handleFilterChange}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Select a filter" />
+    <div className="flex items-center gap-2">
+      
+      {/* 1. Preset Dropdown */}
+      <Select value={activeFilterType} onValueChange={handlePresetChange}>
+        <SelectTrigger className="w-[180px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+          <SelectValue placeholder="Select a filter" /> 
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="dark:bg-gray-800 dark:border-gray-700 dark:text-white">
           <SelectItem value="today">Today's Business</SelectItem>
           <SelectItem value="last7days">Last 7 Days</SelectItem>
           <SelectItem value="last3months">Last 3 Months</SelectItem>
-          {/* ✅ Add a disabled item for when a custom range is active */}
-          <SelectItem value="dateRange" disabled>
-            Custom Range
-          </SelectItem>
         </SelectContent>
       </Select>
+      
+      {/* 2. From Date Input (Small & Centered) */}
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant={"outline"}
             className={cn(
-              "w-[280px] justify-start text-left font-normal",
-              !selectedRange?.from && "text-muted-foreground"
+              "w-[120px] justify-center font-normal h-9",
+              !fromDateState && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {selectedRange?.from ? (
-              selectedRange.to ? (
-                <>
-                  {format(selectedRange.from, "LLL dd, y")} -{" "}
-                  {format(selectedRange.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(selectedRange.from, "LLL dd, y")
-              )
-            ) : (
-              <span>Filter by date range</span>
-            )}
+            {fromDateState ? formatDatePicker(fromDateState) : <span>From Date</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 dark:bg-gray-800 dark:border-gray-700 dark:text-white" align="start">
           <Calendar
+            mode="single"
+            selected={fromDateState} 
+            onSelect={(date) => handleCustomDateChange(date, 'from')}
             initialFocus
-            mode="range"
-            defaultMonth={selectedRange?.from}
-            selected={selectedRange}
-            onSelect={handleDateSelect}
-            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
+
+      <ArrowRight className="h-4 w-4 text-gray-400" />
+
+      {/* 3. To Date Input (Small & Centered) */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant={"outline"}
+            className={cn(
+              "w-[120px] justify-center font-normal h-9",
+              !toDateState && "text-muted-foreground"
+            )}
+          >
+            {toDateState ? formatDatePicker(toDateState) : <span>To Date</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 dark:bg-gray-800 dark:border-gray-700 dark:text-white" align="start">
+          <Calendar
+            mode="single"
+            selected={toDateState}
+            onSelect={(date) => handleCustomDateChange(date, 'to')}
+            initialFocus
+            disabled={[{ before: fromDateState || new Date(0) }]} 
           />
         </PopoverContent>
       </Popover>

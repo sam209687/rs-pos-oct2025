@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import Invoice from '@/lib/models/invoice'; // Adjust the path to your Invoice model
-import { connectToDatabase } from '@/lib/db';
-// import connectToDatabase from '@/lib/db'; // Adjust the path to your database connection function
+import { NextResponse } from "next/server";
+import mongoose from "mongoose";
+import Invoice from "@/lib/models/invoice"; // Adjust the path to your Invoice model
+import { connectToDatabase } from "@/lib/db";
 
 // Define the handler for GET requests
 export async function GET() {
@@ -26,7 +25,7 @@ export async function GET() {
       {
         $group: {
           _id: { $month: "$createdAt" }, // Group by month number
-          totalInvoice: { $sum: 1 },    // Count
+          totalInvoice: { $sum: 1 }, // Count
           salesAmount: { $sum: "$subtotal" }, // Sum the total sales
         },
       },
@@ -64,13 +63,18 @@ export async function GET() {
     ]);
 
     // 3. Return a successful response with the data
-    return NextResponse.json({ success: true, data: monthlySales }, { status: 200 });
-
+    return NextResponse.json(
+      { success: true, data: monthlySales },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("API Error: Monthly Sales Aggregation failed:", error);
     // 4. Return an error response
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch monthly sales data due to a server error.' },
+      {
+        success: false,
+        message: "Failed to fetch monthly sales data due to a server error.",
+      },
       { status: 500 }
     );
   }

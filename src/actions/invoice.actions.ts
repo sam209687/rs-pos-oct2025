@@ -185,12 +185,27 @@ export const getInvoiceCountByCustomer = async (customerId: string) => {
 // --------------------------------------------------------------------------
 // 💰 FINANCIAL METRICS CALCULATION (NEW FUNCTION)
 // --------------------------------------------------------------------------
-export async function getFinancialMetrics() {
+export async function getFinancialMetrics(fromDate?: Date, toDate?: Date) {
   try {
     await connectToDatabase();
 
-    // 1. Fetch invoices
-    const invoices = await Invoice.find({ status: { $ne: "cancelled" } })
+    // STEP 1: Build the dynamic filter object
+    const filter: any = { status: { $ne: "cancelled" } };
+
+    if (fromDate || toDate) {
+      filter.createdAt = {};
+      if (fromDate) {
+        filter.createdAt.$gte = fromDate;
+      }
+      if (toDate) {
+        // Use a less than or equal to the end of the day/period
+        filter.createdAt.$lte = toDate; 
+      }
+    }
+
+    // 1. Fetch invoices - **FIXED LINE**
+    // 🛠️ The query now correctly uses the 'filter' object containing the date range.
+    const invoices = await Invoice.find(filter)
       .select("invoiceNumber items createdAt")
       .lean();
 
@@ -227,10 +242,7 @@ export async function getFinancialMetrics() {
         const unitConsumed = variant.unitConsumed || 0;
         const others2 = variant.others2 || 0;
         const itemQuantity = item.quantity;
-        const itemRevenue = item.price * itemQuantity;
-
-       // --- Profit Calculation (MODIFIED FORMULA AS REQUESTED) ---
-        
+       
         // 1. Price Difference: selling price - purchase price
         const priceDifference = sellingPrice - purchasePrice; 
 
@@ -238,12 +250,10 @@ export async function getFinancialMetrics() {
         const quantityCalc = priceDifference * unitConsumed;
 
         // 3. Item Profit Per Unit (The calculated Net Profit per unit consumed)
-        // const itemProfitPerUnit = quantityCalc + others2;
         const itemProfitPerUnit = quantityCalc + others2 ;
         
         // Total Profit = (Profit Per Unit) * Item Quantity Sold
         const itemProfit = itemProfitPerUnit ;
-        // const itemProfit = itemProfitPerUnit * itemQuantity;
         
         totalProfit += itemProfit;
 
